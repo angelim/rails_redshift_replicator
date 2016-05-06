@@ -41,9 +41,10 @@ module RailsRedshiftReplicatorHelpers
   end
 
   # Recreates the test users table on redshift
-  def recreate_users_table
+  def recreate_users_table(custom_table_name = nil)
+    table_name = custom_table_name || :users
     with_engine_connection do
-      ActiveRecord::Migration.create_table :users, force: true do |t|
+      ActiveRecord::Migration.create_table table_name, force: true do |t|
         t.string :login
         t.integer :age
         t.boolean :confirmed
@@ -53,9 +54,10 @@ module RailsRedshiftReplicatorHelpers
   end
 
   # Recreates the posts users table on redshift
-  def recreate_posts_table
+  def recreate_posts_table(custom_table_name = nil)
+    table_name = custom_table_name || :posts
     with_engine_connection do
-      ActiveRecord::Migration.create_table :posts, force: true do |t|
+      ActiveRecord::Migration.create_table table_name, force: true do |t|
         t.belongs_to :user
         t.text :content
         t.timestamps
@@ -64,9 +66,21 @@ module RailsRedshiftReplicatorHelpers
   end
 
   # Recreates the test tags table on redshift
-  def recreate_tags_users_table
+  def recreate_tags_table(custom_table_name = nil)
+    table_name = custom_table_name || :tags
     with_engine_connection do
-      ActiveRecord::Migration.create_table :tags_users, id: false, force: true do |t|
+      ActiveRecord::Migration.create_table table_name, force: true do |t|
+        t.string :name
+        t.timestamps
+      end
+    end
+  end
+
+  # Recreates the test tags table on redshift
+  def recreate_tags_users_table(custom_table_name = nil)
+    table_name = custom_table_name || :tags_users
+    with_engine_connection do
+      ActiveRecord::Migration.create_table table_name, id: false, force: true do |t|
         t.integer :user_id
         t.integer :tag_id
       end
