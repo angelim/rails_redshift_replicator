@@ -106,7 +106,7 @@ module RailsRedshiftReplicator
 
       # Returns an instance of a export connection adapter based on ActiveRecord::Base.connection
       # These adapters are required to perform query execution and record retrival in taking advantage of each db driver.
-      # @return adapter [#query_command, #write]
+      # @return adapter [#query_command, #write, #last_record_query_command]
       def connection_adapter
         @connection_adapter ||= begin
           adapter_class = if ar_client.adapter_name.in? %w(Mysql2 PostgreSQL SQLite)
@@ -124,6 +124,7 @@ module RailsRedshiftReplicator
         connection_adapter.query_command sql
       end
 
+      # Returns the ActiveRecord connection adapter for the current database
       def ar_client
         @ar_client ||= ActiveRecord::Base.connection
       end
