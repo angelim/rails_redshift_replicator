@@ -1,5 +1,5 @@
 require 'spec_helper'
-
+class Mylogger < Logger;end
 describe RailsRedshiftReplicator, type: :redshift_replicator do
 
   describe "Config" do
@@ -10,7 +10,7 @@ describe RailsRedshiftReplicator, type: :redshift_replicator do
     end
   end
 
-  describe '.add_replicatable', :focus do
+  describe '.add_replicatable' do
     let(:replicatable) { RailsRedshiftReplicator::Replicatable.new(:identity_replicator, source_table: :users) }
     before { RailsRedshiftReplicator.replicatables = {}}
     it 'keeps a list of replicable tables' do
@@ -106,7 +106,12 @@ describe RailsRedshiftReplicator, type: :redshift_replicator do
           config.local_replication_path = '/local-tmp'
           config.debug_mode = true
           config.history_cap = 3
+          config.logger = Mylogger.new(STDOUT)
         end
+      end
+
+      it 'defines custom logger' do
+        expect(RailsRedshiftReplicator.logger).to be_a Mylogger
       end
       
       it 'defines redshift_connection_params' do
@@ -143,6 +148,7 @@ describe RailsRedshiftReplicator, type: :redshift_replicator do
 
       it 'defines debug_mode' do
         expect(RailsRedshiftReplicator.debug_mode).to eq true
+        expect(RailsRedshiftReplicator.logger.level).to eq Logger::DEBUG
       end
 
       it 'defines history_cap' do
@@ -159,6 +165,22 @@ describe RailsRedshiftReplicator, type: :redshift_replicator do
     it "retorna uma conexão para o redshift" do
       expect(RailsRedshiftReplicator.connection).to be_instance_of PG::Connection
     end
+  end
+
+  describe '.debug_mode=' do
+    context 'enabling debug_mode' do
+      before { RailsRedshiftReplicator.debug_mode = false }
+      it 'changes logger level to debug' do
+        expect { RailsRedshiftReplicator.setup {|config| config.debug_mode = true} }.to change(RailsRedshiftReplicator.logger, :level).to(Logger::DEBUG)
+      end
+    end
+    context 'disabling debug_mode' do
+      before { RailsRedshiftReplicator.debug_mode = true }
+      it 'changes logger level to error' do
+        expect { RailsRedshiftReplicator.setup {|config| config.debug_mode = false} }.to change(RailsRedshiftReplicator.logger, :level).to(Logger::WARN)
+      end
+    end
+
   end
 
   describe ".export" do

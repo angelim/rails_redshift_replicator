@@ -9,6 +9,9 @@ module RailsRedshiftReplicator
   mattr_accessor :replicatables
   @@replicatables = {}.with_indifferent_access
 
+  mattr_accessor :logger
+  @@logger = Logger.new(STDOUT).tap{ |l| l.level = Logger::WARN }
+  
   # Connection parameters for Redshift. Defaults to environment variables.
   mattr_accessor :redshift_connection_params
   @@redshift_connection_params = {
@@ -53,15 +56,20 @@ module RailsRedshiftReplicator
   mattr_accessor :history_cap
   @@history_cap = nil
 
-  LOGGER = Logger.new(STDOUT)
-
   class << self
+
+    def debug_mode=(value)
+      logger.level = value == true ? Logger::DEBUG : Logger::WARN
+      @@debug_mode = value
+    end
+
     # @return [RedshiftReplicator]
     def setup
       yield self
     end
 
     def add_replicatable(hash)
+      logger.debug I18n.t(:replicatable_added, table_name: hash.keys.first, scope: :rails_redshift_replicator) 
       RailsRedshiftReplicator.replicatables.merge! hash
     end
 

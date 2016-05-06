@@ -62,8 +62,8 @@ module RailsRedshiftReplicator
       # Reports missing indexes
       # @see #has_index? 
       def check_index
-        if !has_index? && replication_field
-          I18n.t(:missing_indexes, replication_field: replication_field, table_name: source_table, scope: :rails_redshift_replicator)
+        if !has_index? && replication_field.present?
+          RailsRedshiftReplicator.logger.warn I18n.t(:missing_indexes, replication_field: replication_field, table_name: source_table, scope: :rails_redshift_replicator)
         end
       end
 
@@ -73,7 +73,8 @@ module RailsRedshiftReplicator
         if fields_to_sync
           true
         else
-          puts I18n.t(:missing_table, table_name: target_table, scope: :rails_redshift_replicator)
+          RailsRedshiftReplicator.logger.error I18n.t(:missing_table, table_name: target_table, scope: :rails_redshift_replicator)
+          false
         end
       end
 
@@ -121,6 +122,7 @@ module RailsRedshiftReplicator
       # Performs the query to retrive records to export
       # @param sql [String] sql to execute
       def query_command(sql)
+        RailsRedshiftReplicator.logger.debug I18n.t(:executing_query, scope: :rails_redshift_replicator, sql: sql, adapter: connection_adapter.class.name)
         connection_adapter.query_command sql
       end
 
@@ -148,11 +150,11 @@ module RailsRedshiftReplicator
         export_start = @replication.exporting
         counts = write_csv file_name
         unless counts > 0
-          puts I18n.t(:no_new_records, table_name: source_table, scope: :rails_redshift_replicator)
+          RailsRedshiftReplicator.logger.info I18n.t(:no_new_records, table_name: source_table, scope: :rails_redshift_replicator)
           self.replication = nil
           return
         end
-        puts I18n.t(:exporting_results, counts: counts, scope: :rails_redshift_replicator)
+        RailsRedshiftReplicator.logger.info I18n.t(:exporting_results, counts: counts, scope: :rails_redshift_replicator)
         split_file(file_name, counts)
         @replication.exported! export_duration: (Time.now-export_start).ceil, record_count: counts
 
@@ -259,7 +261,7 @@ module RailsRedshiftReplicator
         files.each do |file|
           basename = File.basename(file)
           next if basename == File.basename(@replication.key)
-          puts I18n.t(:uploading_notice, file: file, key: s3_file_key(basename), scope: :rails_redshift_replicator)
+          RailsRedshiftReplicator.logger.info I18n.t(:uploading_notice, file: file, key: s3_file_key(basename), scope: :rails_redshift_replicator)
           self.class.replication_bucket.files.create key: s3_file_key(basename), body: File.open(file)
         end
         files.each { |f| FileUtils.rm f}
