@@ -13,9 +13,6 @@
 
 ActiveRecord::Schema.define(version: 20160504120421) do
 
-  # These are extensions that must be enabled in order to support this database
-  enable_extension "plpgsql"
-
   create_table "posts", force: :cascade do |t|
     t.integer  "user_id"
     t.text     "content"
@@ -23,28 +20,7 @@ ActiveRecord::Schema.define(version: 20160504120421) do
     t.datetime "updated_at"
   end
 
-  add_index "posts", ["user_id", "updated_at"], name: "index_posts_on_user_id_and_updated_at", using: :btree
-
-  create_table "rails_redshift_replicator_replications", force: :cascade do |t|
-    t.string   "replication_type"
-    t.string   "key"
-    t.string   "state",            default: "enqueued"
-    t.string   "last_record"
-    t.integer  "retries",          default: 0
-    t.text     "last_error"
-    t.string   "source_table"
-    t.string   "target_table"
-    t.integer  "slices"
-    t.integer  "first_record"
-    t.integer  "record_count"
-    t.string   "export_format"
-    t.integer  "export_duration"
-    t.integer  "upload_duration"
-    t.integer  "import_duration"
-    t.text     "ids_to_delete"
-    t.datetime "created_at",                            null: false
-    t.datetime "updated_at",                            null: false
-  end
+  add_index "posts", ["user_id", "updated_at"], name: "index_posts_on_user_id_and_updated_at"
 
   create_table "tags", force: :cascade do |t|
     t.string   "name"
@@ -52,14 +28,14 @@ ActiveRecord::Schema.define(version: 20160504120421) do
     t.datetime "updated_at"
   end
 
-  add_index "tags", ["name", "updated_at"], name: "index_tags_on_name_and_updated_at", using: :btree
+  add_index "tags", ["name", "updated_at"], name: "index_tags_on_name_and_updated_at"
 
   create_table "tags_users", id: false, force: :cascade do |t|
     t.integer "user_id"
     t.integer "tag_id"
   end
 
-  add_index "tags_users", ["user_id", "tag_id"], name: "index_tags_users_on_user_id_and_tag_id", using: :btree
+  add_index "tags_users", ["user_id", "tag_id"], name: "index_tags_users_on_user_id_and_tag_id"
 
   create_table "users", force: :cascade do |t|
     t.string   "login"
@@ -70,6 +46,6 @@ ActiveRecord::Schema.define(version: 20160504120421) do
     t.datetime "updated_at"
   end
 
-  add_index "users", ["login", "age"], name: "index_users_on_login_and_age", using: :btree
+  add_index "users", ["login", "age"], name: "index_users_on_login_and_age"
 
 end
