@@ -27,7 +27,7 @@ module RailsRedshiftReplicator
     # Returns tables to export. :all selects all eligible
     # @returns [Array<String>] tables to export
     def tables_to_export(*tables)
-      raise StandardError.new("Especifique modelos para exportação ou use :all para todos") if tables == []
+      raise StandardError.new(I18n.t(:must_specify_tables, scope: :rails_redshift_replicator)) if tables == []
       tables[0] == :all ? eligible_replicatables : filtered_tables(tables)
     end
 
