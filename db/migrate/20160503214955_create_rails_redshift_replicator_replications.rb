@@ -1,10 +1,12 @@
+# 20160503214955
 class CreateRailsRedshiftReplicatorReplications < ActiveRecord::Migration
   def change
     create_table :rails_redshift_replicator_replications do |t|
       t.string   "replication_type"
       t.string   "key"
       t.string   "state",            :default => "enqueued"
-      t.integer  "last_record"
+      t.string   "last_record"
+      t.integer  "retries", default: 0
       t.text     "last_error"
       t.string   "source_table"
       t.string   "target_table"
