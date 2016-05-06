@@ -1,0 +1,8 @@
+en:
+  rails_redshift_replicator:
+    uploading_notice: "uploading %{file} to %{key}."
+    exporting_results: "exporting %{counts} results."
+    no_new_records: "No new record for %{table_name} to export."
+    missing_indexes: "'%{replication_field}' index is missing on table '%{table_name}'. Export performance can be improved by adding indexes to replication fields."
+    missing_table: "Coudn't find table  %{table_name} on Redshift."
+    missing_replicator_type: Replication type not implemented
