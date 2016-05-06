@@ -19,9 +19,16 @@ Gem::Specification.new do |s|
 
   s.add_dependency "rails", "~> 4.0"
   s.add_dependency "pg", '~> 0.18'
+  s.add_dependency "activerecord-redshift-adapter"
+  s.add_dependency "fog"
 
   s.add_development_dependency "sqlite3", '~> 1.3'
+  s.add_development_dependency 'mysql2', '~> 0.3.16'
   s.add_development_dependency 'rspec-rails', '~> 3.4'
   s.add_development_dependency 'factory_girl_rails','~> 4.5'
   s.add_development_dependency 'shoulda-matchers', '~> 3.1'
+  s.add_development_dependency 'pry-byebug'
+  s.add_development_dependency 'dotenv-rails'
+  s.add_development_dependency 'climate_control'
+  s.add_development_dependency 'timecop'
 end
