@@ -1,10 +1,17 @@
 ENV['RAILS_ENV'] ||= 'test'
 
+require 'dotenv'
+Dotenv.load File.expand_path("../dummy/.env", __FILE__)
+
 require File.expand_path("../dummy/config/environment.rb", __FILE__)
+
 require 'rspec/rails'
 require 'rspec/autorun'
 require 'factory_girl_rails'
 require 'shoulda-matchers'
+require 'climate_control'
+require 'pry-byebug'
+require 'timecop'
 
 Rails.backtrace_cleaner.remove_silencers!
 
@@ -17,6 +24,7 @@ RSpec.configure do |config|
  config.infer_base_class_for_anonymous_controllers = false
  config.order = "random"
  config.include FactoryGirl::Syntax::Methods
+ config.include RailsRedshiftReplicatorHelpers, type: :redshift_replicator
 end
 
 Shoulda::Matchers.configure do |config|
