@@ -8,7 +8,7 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
   let(:user_exporter)      { RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicatable) }
   let(:post_exporter)      { RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicatable) }
   let(:habtm_exporter)     { RailsRedshiftReplicator::Exporters::FullReplicator.new(habtm_replicatable) }
-
+  before { RailsRedshiftReplicator.debug_mode = true }
   describe "Integration tests" do
     describe 'TimedReplicator' do
       before(:all) { recreate_posts_table }
@@ -159,13 +159,13 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
     describe "#target_table_exists?" do
       context "when the target table exists on redshift" do
         before { recreate_users_table }
-        it "retorna true" do
+        it "returns true" do
           expect(user_exporter.target_table_exists?).to be true
         end
       end
       context "when the target table doesn't exist on redshift" do
         before { drop_redshift_table(:users) }
-        it "retorna nil" do
+        it "returns nil" do
           expect(user_exporter.target_table_exists?).not_to be true
         end
       end
@@ -178,21 +178,21 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
       let(:sql) { "SELECT id,user_id,publication_id FROM users WHERE 1=1 AND id > '5' AND id <= '10' OR id IS NULL" }
       context 'when adapter is Mysql2' do
         before { allow(user_exporter.ar_client).to receive(:adapter_name).and_return('Mysql2') }
-        it "execute query with streaming option" do
+        it "executes query with streaming option" do
           expect(user_exporter.ar_client.instance_variable_get("@connection")).to receive(:query).with(sql, stream: true)
           user_exporter.records(5)
         end
       end
       context "when adapter is SQLite" do
         before { allow(user_exporter.ar_client).to receive(:adapter_name).and_return('SQLite') }
-        it "execute query without other arguments" do
+        it "executes query without other arguments" do
           expect(user_exporter.ar_client).to receive(:exec_query).with(sql)
           user_exporter.records(5)
         end
       end
       context "when adapter is PostgreSQL" do
         before { allow(user_exporter.ar_client).to receive(:adapter_name).and_return('PostgreSQL') }
-        xit "execute query using single row mode" do
+        xit "executes query using single row mode" do
         end
       end
     end
@@ -239,12 +239,12 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
       context "when there's a previous replication record" do
         let!(:replication) { create :redshift_replication, target_table: 'users', last_record: 1 }
         let!(:replication2) { create :redshift_replication, target_table: 'users', last_record: 5 }
-        it "retorna o id ou timestamp do do último registro da última replicação" do
+        it "returns the id or timestamp of the last_record on the most recent complete replication" do
           expect(user_exporter.from_record).to eq '5'
         end
       end
       context "when there isn't a previous replication record" do
-        it "retorna nil" do
+        it "returns nil" do
           expect(user_exporter.from_record).to be_nil
         end
       end
@@ -284,36 +284,36 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
 
     describe "export!" do
       before { allow(user_exporter).to receive(:fields_to_sync).and_return(%w(id login age)) }
-      context "se há importações pendentes" do
+      context "when there are incomplete replications" do
         before { create :redshift_replication, source_table: "users", state: "uploaded" }
-        it "não cria registro de replicação" do
+        it "doesn't create replication record" do
           user_exporter.export!
           expect(user_exporter.replication).to be_nil
         end
-        it "retorna nil" do
+        it "returns nil" do
           expect(user_exporter.export!).to be_nil
         end
       end
-      context "se não tem importações pendentes" do
+      context "when there are no incomplete replications" do
         before { create :redshift_replication, source_table: "users", state: "imported" }
-        context "se tem registros para exportar" do
+        context "and there are records to export" do
           before { create :user }
-          it "cria os files" do
+          it "creates export files" do
             file_paths = user_exporter.export!
             expect(file_paths).to be_an_instance_of Array
             expect(file_paths).to be_present
           end
-          it "marca replicação como 'exported'" do
+          it "flags replication as exported" do
             user_exporter.export!
             expect(user_exporter.replication.state).to eq "exported"
           end
         end
-        context "se não tem registros para exportar" do
-          it "não cria registro de replicação" do
+        context "and there aren't any records to export" do
+          it "doesn't create replication record" do
             user_exporter.export!
             expect(user_exporter.replication).to be_nil
           end
-          it "retorna nil" do
+          it "retorns nil" do
             expect(user_exporter.export!).to be_nil
           end
         end
@@ -340,13 +340,13 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
     describe "#file_key_in_format" do
       context "with csv format" do
         let(:file) { user_exporter.file_key_in_format("file.csv", "csv") }
-        it "retorna o identificador para o file no s3" do
+        it "returns file handler on s3" do
           expect(file).to eq "rrr/users/file.csv"
         end
       end
       context "with gzip format" do
         let(:file) { user_exporter.file_key_in_format("file.csv", "gzip") }
-        it "retorna o identificador para o file no s3" do
+        it "returns file handler on s3" do
           expect(file).to eq "rrr/users/file.gz"
         end
       end
@@ -390,31 +390,31 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
     end
 
     describe "#export_and_upload" do
-      context "se a tabela não estiver sincronizada com o redshift" do
+      context "when the target table doesn't exist on redshift" do
         before do
           drop_redshift_table(:users)
         end
-        it "não chama #export!" do
+        it "doesn't call #export!" do
           expect(user_exporter.export_and_upload).not_to receive(:export)
         end
       end
-      context "com a tabela sincronizada" do
+      context "when the target table exists on redshift" do
         before(:all) do
           recreate_users_table
         end
-        it "chama #export!" do
+        it "calls #export!" do
           expect(user_exporter).to receive(:export!)
           user_exporter.export_and_upload
         end
-        context "com registros para exportar" do
+        context "when there are records to export" do
           before { allow(user_exporter).to receive(:export!).and_return("file") }
-          it "chama #upload!" do
+          it "calls #upload!" do
             expect(user_exporter).to receive(:upload!)
             user_exporter.export_and_upload
           end
         end
-        context "sem registros para exportar" do
-          it "não chama #upload!" do
+        context "when there are no records to export" do
+          it "doesn't call #upload!" do
             expect(user_exporter.export_and_upload).not_to receive(:upload!)
           end
         end
