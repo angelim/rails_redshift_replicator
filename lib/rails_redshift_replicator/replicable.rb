@@ -1,5 +1,5 @@
 module RailsRedshiftReplicator
-  class Replicatable
+  class Replicable
     attr_reader :source_table, :target_table, :replication_field, :replication_type
 
     # @param replication_type [String, Symbol]
@@ -11,7 +11,8 @@ module RailsRedshiftReplicator
       @replication_type = replication_type
       @source_table = options[:source_table].to_s
       @target_table = (options[:target_table] || source_table).to_s
-      @replication_field = (options[:replication_field] || exporter_class.replication_field).to_s
+      replication_field = options[:replication_field] || exporter_class.replication_field
+      @replication_field = replication_field && replication_field.to_s
     end
 
     def replicate
@@ -19,8 +20,16 @@ module RailsRedshiftReplicator
       import
     end
 
-    def import
-      importer_class.new(self)
+    def import(replication = last_replication)
+      if replication.present?
+        importer_class.new(replication).import
+      else
+        RailsRedshiftReplicator.logger.info I18n.t(:nothing_to_import, table_name: source_table, scope: :rails_redshift_replicator)
+      end
+    end
+
+    def last_replication
+      RailsRedshiftReplicator::Replication.from_table(source_table).uploaded.last
     end
 
     def export

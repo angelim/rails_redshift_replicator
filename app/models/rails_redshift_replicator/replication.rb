@@ -1,6 +1,6 @@
 module RailsRedshiftReplicator
   class Replication < ActiveRecord::Base
-    STATES = %w(enqueued exporting exported uploading uploaded importing imported error)
+    STATES = %w(enqueued exporting exported uploading uploaded importing imported)
     FORMATS = %w(gzip csv)
 
     # @return [Array] ids from source_table to delete on the next replication.
@@ -16,8 +16,22 @@ module RailsRedshiftReplicator
       update_attributes last_error: nil
     end
 
+    def error?
+      last_error.present?
+    end
+
     def setup_target_table
       self.target_table = source_table if target_table.blank?
+    end
+
+    def resume
+      replicable.export(self) unless state.in? %w(importing imported)
+      replicable.import self
+    end
+
+    # @return [RailsRedshiftReplicator::Replicable] replicable for this model/table
+    def replicable
+      RailsRedshiftReplicator.replicables[source_table]
     end
     
     scope :from_table, ->(table) { where(source_table: Array(table).map(&:to_s)) }
