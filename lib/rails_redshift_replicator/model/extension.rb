@@ -30,8 +30,8 @@ module RailsRedshiftReplicator
       def rrr_replicate
         rails_redshift_replicator_replicable.replicate
       end
-      def rrr_vaccum
-        rails_redshift_replicator_replicable.vaccum
+      def rrr_vacuum
+        rails_redshift_replicator_replicable.vacuum
       end
       def rrr_analyze
         rails_redshift_replicator_replicable.analyze
