@@ -152,7 +152,7 @@ module RailsRedshiftReplicator
       def export(options = {})
         return if errors.present?
         slices = options[:slices] || RailsRedshiftReplicator.redshift_slices.to_i
-        format = options[:format] || "csv"
+        format = options[:format] || RailsRedshiftReplicator.preferred_format
         return if pending_imports?
         file_name = "#{source_table}_#{Time.now.to_i}.csv"
         initialize_replication(file_name, format, slices)
@@ -258,17 +258,20 @@ module RailsRedshiftReplicator
       # @note Broken
       # @todo fix using bash executable
       def upload_gzip(files)
-        raise NotImplementedError
-        files.each do |file|
-          Zlib::GzipWriter.open(gzipped(file)) do |gzip|
-            CSV.foreach(file) do |line|
-              gzip << line.map{ |field| field.gsub(/\n/, "\\\n") rescue nil }.to_csv
-            end
-          end
-          self.class.replication_bucket.files.create key: self.class.s3_file_key(source_table, gzipped(file)), body: File.open(gzipped(file))
-          FileUtils.rm file
-          FileUtils.rm gzipped(file)
+        without_base = files_without_base(files)
+        without_base.each do |file|
+          basename = File.basename(file)
+          command = "#{RailsRedshiftReplicator.gzip_command} -c #{file} > #{gzipped(file)}"
+          RailsRedshiftReplicator.logger.info I18n.t(:gzip_notice, file: file, gzip_file: gzipped(file), command: command, scope: :rails_redshift_replicator)
+          `#{command}`
+          self.class.replication_bucket.files.create key: self.class.s3_file_key(source_table, gzipped(basename)), body: File.open(gzipped(file))
         end
+        files.each { |f| FileUtils.rm f }
+        without_base.each { |f| FileUtils.rm gzipped(f) }
+      end
+
+      def files_without_base(files)
+        files.reject{|f| f.split('.').last.in? %w(gz csv)}
       end
 
       # Uploads splitted CSVs

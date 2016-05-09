@@ -31,8 +31,9 @@ describe RailsRedshiftReplicator do
 
   describe '#tables_to_perform' do
     context 'when exporting all tables' do
+      before { RailsRedshiftReplicator.add_replicable(tags_users: RailsRedshiftReplicator::Replicable.new(:full_replicator, source_table: :tags_users)) }
       it 'returns all tables' do
-        expect(RailsRedshiftReplicator.tables_to_perform(:all)).to contain_exactly('users', 'posts', 'tags')
+        expect(RailsRedshiftReplicator.tables_to_perform(:all)).to contain_exactly('users', 'posts', 'tags', 'tags_users')
       end
     end
     context 'when exporting selected tables' do

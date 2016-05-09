@@ -18,10 +18,9 @@ describe 'Integration Tests' do
       before do
         5.times { create :user }
       end
-      it 'replicates 5 users' do
+      it 'replicates 5 users', focus: true do
         RailsRedshiftReplicator.replicate :users
-        users_count = RailsRedshiftReplicator.connection.exec("SELECT COUNT(1) FROM users").first["count"].to_i
-        expect(users_count).to eq 5
+        expect(redshift_counts('users')).to eq 5
       end
     end
     context 'replicating users and posts' do
@@ -34,12 +33,10 @@ describe 'Integration Tests' do
         10.times { create :post } # creates one user for each post
 
         RailsRedshiftReplicator.replicate :users, :posts
-        users_count = RailsRedshiftReplicator.connection.exec("SELECT COUNT(1) FROM users").first["count"].to_i
-        posts_count = RailsRedshiftReplicator.connection.exec("SELECT COUNT(1) FROM posts").first["count"].to_i
-        expect(users_count).to eq 15
-        expect(posts_count).to eq 10
+        expect(redshift_counts('users')).to eq 15
+        expect(redshift_counts('posts')).to eq 10
       end
-      context 'replicating users and posts', focus: true do
+      context 'replicating users and posts' do
         before(:all) do
           recreate_users_table
           recreate_posts_table

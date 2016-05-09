@@ -194,7 +194,7 @@ describe RailsRedshiftReplicator::Exporters::Base do
         expect(replication.record_count).to     be_nil
         expect(replication.key).to              eq "rrr/users/replication_file"
         expect(replication.last_record).to      eq '3'
-        expect(replication.first_record).to     eq 1
+        expect(replication.first_record).to     eq '1'
         expect(replication.state).to            eq "exporting"
         expect(replication.replication_type).to eq "identity_replicator"
         expect(replication.target_table).to     eq "users"

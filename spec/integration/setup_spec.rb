@@ -1,6 +1,6 @@
 require 'spec_helper'
 class Mylogger < Logger;end
-describe 'Setup Tests' do
+describe 'Setup Tests', :broken do
   describe ".setup" do
     context 'with default configuration' do
       after(:all) { Dotenv.load File.expand_path("../spec/dummy/.env", __FILE__); RailsRedshiftReplicator.redefine_defaults }

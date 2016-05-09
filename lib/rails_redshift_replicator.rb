@@ -19,7 +19,7 @@ require 'rails_redshift_replicator/tools/vacuum'
 module RailsRedshiftReplicator
   mattr_accessor :replicables, :logger, :redshift_connection_params, :aws_credentials, :s3_bucket_params,
                  :redshift_slices, :local_replication_path, :debug_mode, :history_cap, :max_copy_errors,
-                 :split_command, :gzip_command
+                 :split_command, :gzip_command, :preferred_format
 
   class << self
 
@@ -72,7 +72,9 @@ module RailsRedshiftReplicator
       @@split_command = 'split'
 
       # Command or path to executable that compresses files to gzip
-      @@gzip_command = 'tar -czf'
+      @@gzip_command = 'gzip'
+
+      @@preferred_format = 'csv'
 
       return nil
     end
