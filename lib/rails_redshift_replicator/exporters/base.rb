@@ -190,7 +190,7 @@ module RailsRedshiftReplicator
       # @param counts [Integer] number of files
       def split_file(name, counts)
         file_name = local_file(name)
-        `split -l #{counts} #{file_name} #{file_name}.`
+        `#{RailsRedshiftReplicator.split_command} -l #{counts} #{file_name} #{file_name}.`
       end
 
       # Number of lines per file

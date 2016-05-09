@@ -23,6 +23,7 @@ module RailsRedshiftReplicator
 
   class << self
 
+    # @note Useful for testing
     def define_defaults
       @@replicables = {}.with_indifferent_access
       @@logger = Logger.new(STDOUT).tap{ |l| l.level = Logger::WARN }
