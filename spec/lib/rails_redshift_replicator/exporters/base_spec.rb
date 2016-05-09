@@ -305,27 +305,6 @@ describe RailsRedshiftReplicator::Exporters::Base do
       end
     end
 
-    describe "#pending_imports?" do
-      context "when the last replication is complete" do
-        before { create :redshift_replication, source_table: "users", state: "imported"}
-        it "returns false" do
-          expect(user_exporter).not_to be_pending_imports
-        end
-      end
-
-      context "when there are no previous replications for the table" do
-        it "returns false" do
-          expect(user_exporter).not_to be_pending_imports
-        end
-      end
-      context "when the last replication is not complete" do
-        before { create :redshift_replication, source_table: "users", state: "uploaded"}
-        it "returns true" do
-          expect(user_exporter).to be_pending_imports
-        end
-      end
-    end
-
     describe "#export_and_upload" do
       context "when the target table doesn't exist on redshift" do
         before(:all) { drop_redshift_table(:users) }

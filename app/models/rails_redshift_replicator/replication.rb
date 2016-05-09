@@ -1,6 +1,6 @@
 module RailsRedshiftReplicator
   class Replication < ActiveRecord::Base
-    STATES = %w(enqueued exporting exported uploading uploaded importing imported)
+    STATES = %w(enqueued exporting exported uploading uploaded importing imported canceled)
     FORMATS = %w(gzip csv)
 
     # @return [Array] ids from source_table to delete on the next replication.
@@ -16,17 +16,20 @@ module RailsRedshiftReplicator
       update_attributes last_error: nil
     end
 
+    # If replication is on an error state
+    # @return [true, false] if has error
     def error?
       last_error.present?
     end
 
+    # Initializes target table if it is blank
     def setup_target_table
       self.target_table = source_table if target_table.blank?
     end
 
-    def resume
-      replicable.export(self) unless state.in? %w(importing imported)
-      replicable.import self
+    # Cancels the replication
+    def cancel!
+      update_attribute :state, 'canceled'
     end
 
     # @return [RailsRedshiftReplicator::Replicable] replicable for this model/table
@@ -34,7 +37,7 @@ module RailsRedshiftReplicator
       RailsRedshiftReplicator.replicables[source_table]
     end
     
-    scope :from_table, ->(table) { where(source_table: Array(table).map(&:to_s)) }
+    scope :from_table, ->(table) { where(source_table: Array(table).map(&:to_s)).where.not(state: 'canceled') }
     scope :with_state, ->(state) { where(state: state) }
 
     # Builds helper methods to identify export format.

@@ -71,10 +71,122 @@ describe RailsRedshiftReplicator::Replicable do
 
   describe '#export' do
     let(:replicable) { RailsRedshiftReplicator::Replicable.new(:identity_replicator, source_table: 'users') }  
-    it 'calls the correspondent exporter class' do
-      allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
-      expect(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive(:new).with(replicable)
-      replicable.export
+    context 'without previous replications' do
+      it 'calls the correspondent exporter class' do
+        allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
+        expect(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive(:new).with(replicable, nil)
+        replicable.export
+      end
+    end
+    context 'with previous imported replication' do
+      let!(:previous_replication) { create :redshift_replication, source_table: 'users', replication_type: 'identity_replicator', state: 'imported'}
+      it 'calls the correspondent exporter class' do
+        allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
+        expect(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive(:new).with(replicable, nil)
+        replicable.export
+      end
+    end
+    context 'with previous uploading replication' do
+      let!(:previous_replication) { create :redshift_replication, source_table: 'users', replication_type: 'identity_replicator', state: 'uploading' }
+      context 'and max_retries is defined' do
+        before { RailsRedshiftReplicator.max_retries = 0 }
+        context 'and max_retries was reached' do
+          it 'calls the correspondent exporter class without the previous replication' do
+            allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
+            expect(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive(:new).with(replicable, nil)
+            replicable.export
+          end
+          it 'cancels the previous replication' do
+            allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
+            replicable.export
+            expect(previous_replication.reload).to be_canceled
+          end
+        end
+        context "and max_retries wasn't reached" do
+          before { RailsRedshiftReplicator.max_retries = 1 }
+          it 'calls the correspondent exporter class with previous replication' do
+            allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
+            expect(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive(:new).with(replicable, previous_replication)
+            replicable.export
+          end
+        end
+      end
+      context 'and max_retries is not defined' do
+        it 'calls the correspondent exporter class with previous replication' do
+          allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
+          expect(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive(:new).with(replicable, previous_replication)
+          replicable.export
+        end
+      end
+
+    end
+    context 'with previous importing replication' do
+      before { RailsRedshiftReplicator.max_retries = nil }
+      let!(:previous_replication) { create :redshift_replication, source_table: 'users', replication_type: 'identity_replicator', state: 'importing' }
+      it 'calls the correspondent importer class' do
+        allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
+        expect(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive(:new).with(previous_replication)
+        replicable.export
+      end
+    end
+  end
+
+  describe 'import' do
+    let(:replicable)    { RailsRedshiftReplicator::Replicable.new(:identity_replicator, source_table: 'users') }  
+    let!(:replication1) { create :redshift_replication, source_table: 'users', state: 'imported' }
+    let!(:replication2) { create :redshift_replication, source_table: 'posts' }
+    context 'without last replication' do
+      it 'does not call import' do
+        allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
+        expect(RailsRedshiftReplicator::Importers::IdentityReplicator).not_to receive(:new)
+        replicable.import
+      end
+    end
+    context 'with last replication' do
+      context 'and last replication is uploaded' do
+        let!(:replication)  { create :redshift_replication, source_table: 'users', state: 'uploaded' }
+        it 'calls import with the last uploaded replication' do
+          allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
+          expect(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive(:new).with(replication)
+          replicable.import
+        end
+      end
+      context 'and last replication is imported' do
+        it 'does not call import' do
+          allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
+          expect(RailsRedshiftReplicator::Importers::IdentityReplicator).not_to receive(:new)
+          replicable.import
+        end
+      end
+      context 'and last replication is importing' do
+        let!(:replication)  { create :redshift_replication, source_table: 'users', state: 'importing' }
+        context 'and max_retries is not set' do
+          before { RailsRedshiftReplicator.max_retries = nil }
+          it 'calls the correspondent importer class resuming the replication' do
+            allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
+            expect(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive(:new).with(replication)
+            replicable.import
+          end
+        end
+        context 'and max_retries is set' do
+          context "but wasn't reached" do
+            before { RailsRedshiftReplicator.max_retries = 2 }
+            it 'calls the correspondent importer class resuming the replication' do
+              allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
+              expect(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive(:new).with(replication)
+              replicable.import
+            end
+          end
+          context 'and was reached' do
+            before { RailsRedshiftReplicator.max_retries = 0 }
+            it 'calls the correspondent importer class resuming the replication' do
+              allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
+              expect(RailsRedshiftReplicator::Importers::IdentityReplicator).not_to receive(:new).with(replication)
+              replicable.import
+            end
+          end
+        end
+      end
     end
   end
 
@@ -94,25 +206,6 @@ describe RailsRedshiftReplicator::Replicable do
     end
   end
 
-  describe 'import' do
-    let(:replicable)    { RailsRedshiftReplicator::Replicable.new(:identity_replicator, source_table: 'users') }  
-    let!(:replication)  { create :redshift_replication, source_table: 'users', state: 'uploaded' }
-    let!(:replication1) { create :redshift_replication, source_table: 'users', state: 'imported' }
-    let!(:replication2) { create :redshift_replication, source_table: 'posts' }
-    context 'with current replication', focus: true do
-      it 'calls import with the current replication' do
-        allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
-        expect(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive(:new).with(replication1)
-        replicable.import(replication1)
-      end
-    end
-    context 'with last replication' do
-      it 'calls import with the last uploaded replication' do
-        allow(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive_message_chain(:new, :import)
-        expect(RailsRedshiftReplicator::Importers::IdentityReplicator).to receive(:new).with(replication)
-        replicable.import
-      end
-    end
-  end
+
 
 end

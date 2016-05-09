@@ -19,7 +19,7 @@ require 'rails_redshift_replicator/tools/vacuum'
 module RailsRedshiftReplicator
   mattr_accessor :replicables, :logger, :redshift_connection_params, :aws_credentials, :s3_bucket_params,
                  :redshift_slices, :local_replication_path, :debug_mode, :history_cap, :max_copy_errors,
-                 :split_command, :gzip_command, :preferred_format
+                 :split_command, :gzip_command, :preferred_format, :max_retries
 
   class << self
 
@@ -76,6 +76,8 @@ module RailsRedshiftReplicator
 
       @@preferred_format = 'csv'
 
+      @@max_retries = nil
+
       return nil
     end
     alias redefine_defaults define_defaults
@@ -105,7 +107,7 @@ module RailsRedshiftReplicator
       check_args(tables)
       replicable_definitions(tables_to_perform(tables)).each do |_, replicable|
         replication = replicable.export
-        replicable.import replication
+        replicable.import
       end
     end
 

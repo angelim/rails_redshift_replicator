@@ -20,6 +20,7 @@ module RailsRedshiftReplicator
       # @option options [Boolean] :noload If true, data will be validated but not imported
       def copy(table_name = replication.target_table, options = {})
         begin
+          RailsRedshiftReplicator.logger.info I18n.t(:importing_file, file: import_file, target_table: table_name, scope: :rails_redshift_replicator)
           result = ::RailsRedshiftReplicator.connection.exec copy_statement(table_name, options)
           replication.imported! if result.result_status == 1 && options[:mark_as_imported]
         rescue => e

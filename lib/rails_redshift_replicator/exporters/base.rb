@@ -153,7 +153,6 @@ module RailsRedshiftReplicator
         return if errors.present?
         slices = options[:slices] || RailsRedshiftReplicator.redshift_slices.to_i
         format = options[:format] || RailsRedshiftReplicator.preferred_format
-        return if pending_imports?
         file_name = "#{source_table}_#{Time.now.to_i}.csv"
         initialize_replication(file_name, format, slices)
         export_start = replication.exporting
@@ -237,12 +236,6 @@ module RailsRedshiftReplicator
       # @return [RailsRedshiftReplicator::Replication] last replication from a given table
       def last_replication
         @last_replication ||= RailsRedshiftReplicator::Replication.from_table(source_table).last
-      end
-
-      # Check if last replication record was already imported
-      # @return [true, false]
-      def pending_imports?
-        last_replication.present? && !last_replication.imported?
       end
 
       # @param [String] nome do arquivo

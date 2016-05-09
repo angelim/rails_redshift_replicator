@@ -18,7 +18,7 @@ describe 'Integration Tests' do
       before do
         5.times { create :user }
       end
-      it 'replicates 5 users', focus: true do
+      it 'replicates 5 users' do
         RailsRedshiftReplicator.replicate :users
         expect(redshift_counts('users')).to eq 5
       end
@@ -43,7 +43,7 @@ describe 'Integration Tests' do
           recreate_tags_users_table
           recreate_tags_table(:custom_tags)
         end
-        it 'replicates 15 users, 10 posts, 25 tags_users and 25 tags ' do
+        it 'replicates 15 users, 10 posts, 25 tags_users and 25 tags', focus: true do
           5.times { create :user_with_tags }
           10.times { create :post } # creates one user for each post
 
