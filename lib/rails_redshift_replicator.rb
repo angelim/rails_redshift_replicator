@@ -13,6 +13,9 @@ require 'rails_redshift_replicator/importers/identity_replicator'
 require 'rails_redshift_replicator/importers/timed_replicator'
 require 'rails_redshift_replicator/importers/full_replicator'
 
+require 'rails_redshift_replicator/tools/analyze'
+require 'rails_redshift_replicator/tools/vacuum'
+
 module RailsRedshiftReplicator
   mattr_accessor :replicables, :logger, :redshift_connection_params, :aws_credentials, :s3_bucket_params,
                  :redshift_slices, :local_replication_path, :debug_mode, :history_cap, :max_copy_errors,
@@ -122,11 +125,11 @@ module RailsRedshiftReplicator
     end
 
     def vacuum(*args)
-      Tools::Vacuum.new *args
+      Tools::Vacuum.new(*args).perform
     end
 
     def analyze(*args)
-      Tools::Analyze.new *args
+      Tools::Analyze.new(*args).perform
     end
 
     # Lists exporters names
@@ -143,6 +146,10 @@ module RailsRedshiftReplicator
     # @return [Array<String>] tables
     def replicable_tables
       RailsRedshiftReplicator.replicables.keys.map(&:to_s)
+    end
+
+    def replicable_target_tables
+      RailsRedshiftReplicator.replicables.map{ |k,v| v[:target_table] }
     end
 
     # @retuns [Hash] subset of key pairs of replicables
