@@ -14,7 +14,7 @@ FactoryGirl.define do
         tags_count 5
       end
       after(:create) do |user, evaluator|
-        create_list(:tag, evaluator.tags_count, user: [user])
+        create_list(:tag, evaluator.tags_count, users: [user])
       end
     end
   end

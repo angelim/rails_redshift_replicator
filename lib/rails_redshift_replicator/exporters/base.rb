@@ -9,9 +9,9 @@ module RailsRedshiftReplicator
   module Exporters
     class Base
       extend Forwardable
-      def_delegators :replicatable, :replication_type, :source_table, :target_table, :replication_field, :exporter_class
-      attr_reader :replicatable
-      attr_accessor :replication
+      def_delegators :replicable, :replication_type, :source_table, :target_table, :replication_field, :exporter_class
+      attr_reader :replicable
+      attr_accessor :replication, :file_names, :errors
       FILENAME_SEPARATOR = "-"
       
       # S3 folder inside replication bucket
@@ -34,17 +34,26 @@ module RailsRedshiftReplicator
         @directory ||= s3_connection.directories.get(RailsRedshiftReplicator.s3_bucket_params[:bucket], prefix: prefix)
       end
 
-      def initialize(replicatable)
-        @replication = nil
-        @replicatable = replicatable
+      # File location on s3
+      # @return [String] file location
+      def self.s3_file_key(source_table, file)
+        "#{prefix}/#{source_table}/#{file}"
+      end
+
+      def initialize(replicable, current_replication = nil)
+        @replicable = replicable
+        @replication = current_replication
+        @file_names = nil
+        @errors = nil
+        check_target_table
+        check_index
       end
 
       # Exports and uploads selected records from the source_table
       def export_and_upload(options = {})
-        return unless target_table_exists?
-        check_index
-        file_name = export! options
-        upload! file_name if file_name
+        files = export options
+        upload files
+        replication
       end
 
       # Lists indexes from source table
@@ -69,12 +78,11 @@ module RailsRedshiftReplicator
 
       # Checks if target table exists on Redshift
       # @return [true, false] if table exists
-      def target_table_exists?
-        if fields_to_sync
-          true
-        else
-          RailsRedshiftReplicator.logger.error I18n.t(:missing_table, table_name: target_table, scope: :rails_redshift_replicator)
-          false
+      def check_target_table
+        unless fields_to_sync
+          message = I18n.t(:missing_table, table_name: target_table, scope: :rails_redshift_replicator)
+          RailsRedshiftReplicator.logger.error(message) 
+          @errors = message
         end
       end
 
@@ -94,7 +102,7 @@ module RailsRedshiftReplicator
         end
       end
 
-      # Builds the SQL string based on replicatable and exporter parameters
+      # Builds the SQL string based on replicable and exporter parameters
       # @return sql [String] sql string to perform the export query
       def build_query_sql(from_record = nil, option = {})
         sql = ""
@@ -141,13 +149,14 @@ module RailsRedshiftReplicator
 
       # Exports results to CSV
       # @return [String] file name
-      def export!(options = {})
+      def export(options = {})
+        return if errors.present?
         slices = options[:slices] || RailsRedshiftReplicator.redshift_slices.to_i
         format = options[:format] || "csv"
         return if pending_imports?
         file_name = "#{source_table}_#{Time.now.to_i}.csv"
         initialize_replication(file_name, format, slices)
-        export_start = @replication.exporting
+        export_start = replication.exporting
         counts = write_csv file_name
         unless counts > 0
           RailsRedshiftReplicator.logger.info I18n.t(:no_new_records, table_name: source_table, scope: :rails_redshift_replicator)
@@ -155,10 +164,10 @@ module RailsRedshiftReplicator
           return
         end
         RailsRedshiftReplicator.logger.info I18n.t(:exporting_results, counts: counts, scope: :rails_redshift_replicator)
-        split_file(file_name, counts)
-        @replication.exported! export_duration: (Time.now-export_start).ceil, record_count: counts
+        split_file file_name, row_count_threshold(counts)
+        replication.exported! export_duration: (Time.now-export_start).ceil, record_count: counts
 
-        Dir.glob "#{local_file(file_name)}*"
+        @file_names = Dir.glob "#{local_file(file_name)}*"
       end
 
       # Writes all results to one file for future splitting.
@@ -178,9 +187,10 @@ module RailsRedshiftReplicator
       # Splits the CSV into a number of files determined by the number of Redshift Slices
       # @note This method requires an executable split and is compliant with Mac and Linux versions of it.
       # @param name [String] file name
-      # @param counts [Integer] number of records
+      # @param counts [Integer] number of files
       def split_file(name, counts)
-        `split -l #{row_count_threshold(counts)} #{local_file(name)} #{local_file(name)}.`
+        file_name = local_file(name)
+        `split -l #{counts} #{file_name} #{file_name}.`
       end
 
       # Number of lines per file
@@ -193,7 +203,12 @@ module RailsRedshiftReplicator
       # Initialize replication record without saving
       # @return [RailsRedshiftReplicator::Replication]
       def initialize_replication(file_name, format, slices)
-        @replication = RailsRedshiftReplicator::Replication.new(
+        attrs = init_replication_attrs(file_name, format, slices)
+        @replication = replication.present? ? replication.assign_attributes(attrs) : RailsRedshiftReplicator::Replication.new(attrs)
+      end
+
+      def init_replication_attrs(file_name, format, slices)
+        {
           key: file_key_in_format(file_name, format),
           last_record: last_record.to_s,
           state: 'exporting',
@@ -202,13 +217,14 @@ module RailsRedshiftReplicator
           target_table: target_table,
           slices: slices,
           first_record: from_record,
-          export_format: format)
+          export_format: format
+        }
       end
 
       # Returns the s3 key to be used
       # @return [String] file key with extension
       def file_key_in_format(file_name, format)
-        format == "gzip" ? s3_file_key(gzipped(file_name)) : s3_file_key(file_name)
+        format == "gzip" ? self.class.s3_file_key(source_table, gzipped(file_name)) : self.class.s3_file_key(source_table, file_name)
       end
 
       # Rename file to use .gz extension
@@ -232,11 +248,11 @@ module RailsRedshiftReplicator
       # @param [String] nome do arquivo
       # Uploads file to s3
       # @param [String] file name
-      def upload!(files = [])
-        return if files.blank?
-        upload_start = @replication.uploading!
-        @replication.gzip? ? upload_gzip(files) : upload_csv(files)
-        @replication.uploaded! upload_duration: (Time.now-upload_start).ceil
+      def upload(files = file_names)
+        return if errors.present? || files.blank?
+        upload_start = replication.uploading!
+        replication.gzip? ? upload_gzip(files) : upload_csv(files)
+        replication.uploaded! upload_duration: (Time.now-upload_start).ceil
       end
 
       # @note Broken
@@ -249,7 +265,7 @@ module RailsRedshiftReplicator
               gzip << line.map{ |field| field.gsub(/\n/, "\\\n") rescue nil }.to_csv
             end
           end
-          self.class.replication_bucket.files.create key: s3_file_key(gzipped(file)), body: File.open(gzipped(file))
+          self.class.replication_bucket.files.create key: self.class.s3_file_key(source_table, gzipped(file)), body: File.open(gzipped(file))
           FileUtils.rm file
           FileUtils.rm gzipped(file)
         end
@@ -260,11 +276,11 @@ module RailsRedshiftReplicator
       def upload_csv(files)
         files.each do |file|
           basename = File.basename(file)
-          next if basename == File.basename(@replication.key)
-          RailsRedshiftReplicator.logger.info I18n.t(:uploading_notice, file: file, key: s3_file_key(basename), scope: :rails_redshift_replicator)
-          self.class.replication_bucket.files.create key: s3_file_key(basename), body: File.open(file)
+          next if basename == File.basename(replication.key)
+          RailsRedshiftReplicator.logger.info I18n.t(:uploading_notice, file: file, key: self.class.s3_file_key(source_table, basename), scope: :rails_redshift_replicator)
+          self.class.replication_bucket.files.create key: self.class.s3_file_key(source_table, basename), body: File.open(file)
         end
-        files.each { |f| FileUtils.rm f}
+        files.each { |f| FileUtils.rm f }
       end
 
       # Retuns the last record to export using the replication_field criteria.
@@ -276,12 +292,6 @@ module RailsRedshiftReplicator
           sql = "SELECT max(#{replication_field}) as _last_record from #{source_table}"
           connection_adapter.last_record_query_command(sql)
         end
-      end
-
-      # File location on s3
-      # @return [String] file location
-      def s3_file_key(file)
-        "#{self.class.prefix}/#{source_table}/#{file}"
       end
 
       # Schema for the export table on redshift

@@ -1,92 +1,32 @@
 require 'spec_helper'
 require 'active_support/core_ext/time/calculations'
 
-describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, replicator: true do
-  let(:user_replicatable)  { RailsRedshiftReplicator::Replicatable.new(:identity_replicator, source_table: :users)}
-  let(:post_replicatable)  { RailsRedshiftReplicator::Replicatable.new(:timed_replicator, source_table: :posts)}
-  let(:habtm_replicatable) { RailsRedshiftReplicator::Replicatable.new(:full_replicator, source_table: :tags_users)}
-  let(:user_exporter)      { RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicatable) }
-  let(:post_exporter)      { RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicatable) }
-  let(:habtm_exporter)     { RailsRedshiftReplicator::Exporters::FullReplicator.new(habtm_replicatable) }
+describe RailsRedshiftReplicator::Exporters::Base do
+  let(:user_replicable)  { RailsRedshiftReplicator::Replicable.new(:identity_replicator, source_table: :users)}
+  let(:post_replicable)  { RailsRedshiftReplicator::Replicable.new(:timed_replicator, source_table: :posts)}
+  let(:full_replicable)  { RailsRedshiftReplicator::Replicable.new(:full_replicator, source_table: :tags_users)}
+  let(:user_exporter)      { RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicable) }
+  let(:post_exporter)      { RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicable) }
+  let(:habtm_exporter)     { RailsRedshiftReplicator::Exporters::FullReplicator.new(full_replicable) }
   before { RailsRedshiftReplicator.debug_mode = true }
-  describe "Integration tests" do
-    describe 'TimedReplicator' do
-      before(:all) { recreate_posts_table }
-      it "exports timed replicator type replication" do
-        model = :post
-        # first export
-        instance = create model
-        RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicatable).export_and_upload
-        replication1 = RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last
-        expect(replication1.state).to eq "uploaded"
-        expect(replication1.record_count).to eq 1
-        file_body = RailsRedshiftReplicator::Exporters::Base.replication_bucket.files.get("#{replication1.key}.aa").body
-        expect(file_body).to match(/#{instance.id},#{instance.user_id},#{instance.content}/)
-        # export without new records
-        RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicatable).export_and_upload
-        expect(RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last).to eq replication1
-        replication1.imported!
-        # export after creating new records
-        3.times {create model}
-        RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicatable).export_and_upload
-        replication2 = RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last
-        expect(replication2.record_count).to eq 3
-        replication2.imported!
-        # export after updating first record
-        instance.touch
-        RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicatable).export_and_upload
-        replication3 = RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last
-        expect(replication3.record_count).to eq 1
-      end
+
+  describe ".s3_file_key" do
+    it "returns s3 handler for file" do
+      expect(RailsRedshiftReplicator::Exporters::Base.s3_file_key("users","file.csv")).to eq "rrr/users/file.csv"
     end
-    describe 'IdentityReplicator' do
-      before(:all) { recreate_users_table }
-      it "exports identity replicator type replication" do
-        model = :user
-        # first export
-        instance = create model
-        RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicatable).export_and_upload
-        replication1 = RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last
-        expect(replication1.state).to eq "uploaded"
-        expect(replication1.record_count).to eq 1
-        file_body = RailsRedshiftReplicator::Exporters::Base.replication_bucket.files.get("#{replication1.key}.aa").body
-        expect(file_body).to match(/#{instance.id},#{instance.login},#{instance.age}/)
-        # export without new records
-        RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicatable).export_and_upload
-        expect(RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last).to eq replication1
-        replication1.imported!
-        # export after creating new records
-        3.times {create model}
-        RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicatable).export_and_upload
-        replication2 = RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last
-        expect(replication2.record_count).to eq 3
-        replication2.imported!
-        # export after updating first record
-        instance.touch
-        RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicatable).export_and_upload
-        expect(RailsRedshiftReplicator::Replication.from_table(model.to_s.pluralize).last).to eq replication2
-      end
+  end
+
+  # Requires previous bucket creation on s3
+  describe ".replication_bucket" do
+    it "returns a connection to the s3 replication bucket defined during setup" do
+      expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket).to be_a ::Fog::Storage::AWS::Directory
+      expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket.key).to eq "rrr-s3-test"
     end
-    describe 'FullReplicator' do
-      before(:all) { recreate_tags_users_table }
-      it "exports full replicator type replication" do
-        model = :tags_users
-        # first export
-        tag = create :tag
-        user = create :user
-        tag.users << user
-        RailsRedshiftReplicator::Exporters::FullReplicator.new(habtm_replicatable).export_and_upload
-        replication1 = RailsRedshiftReplicator::Replication.from_table("tags_users").last
-        expect(replication1.state).to eq "uploaded"
-        expect(replication1.record_count).to eq 1
-        file_body = RailsRedshiftReplicator::Exporters::Base.replication_bucket.files.get("#{replication1.key}.aa").body
-        expect(file_body).to match(/#{user.id},#{tag.id}/)
-        replication1.imported!
-        # export without new records
-        RailsRedshiftReplicator::Exporters::FullReplicator.new(habtm_replicatable).export_and_upload
-        replication2 = RailsRedshiftReplicator::Replication.from_table("tags_users").last
-        expect(replication2.record_count).to eq 1
-      end
+  end
+
+  describe ".s3_connection" do
+    it "returns connection to s3" do
+      expect(RailsRedshiftReplicator::Exporters::Base.s3_connection).to be_a ::Fog::Storage::AWS::Real
     end
   end
 
@@ -136,37 +76,27 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
       end
     end
 
-    describe "#s3_connection" do
-      it "returns connection to s3" do
-        expect(RailsRedshiftReplicator::Exporters::Base.s3_connection).to be_a ::Fog::Storage::AWS::Real
-      end
-    end
-
-    # Requires previous bucket creation on s3
-    describe "#replication_bucket" do
-      it "returns a connection to the s3 replication bucket defined during setup" do
-        expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket).to be_a ::Fog::Storage::AWS::Directory
-        expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket.key).to eq "rrr-s3-test"
-      end
-    end
 
     describe "#replication_field" do
-      it "returns the replicatable replication_field" do
-        expect(RailsRedshiftReplicator::Exporters::Base.new(user_replicatable).replication_field).to eq 'id'
+      it "returns the replicable replication_field" do
+        expect(RailsRedshiftReplicator::Exporters::Base.new(user_replicable).replication_field).to eq 'id'
       end
     end
 
-    describe "#target_table_exists?" do
+    describe "#check_target_table" do
       context "when the target table exists on redshift" do
         before { recreate_users_table }
-        it "returns true" do
-          expect(user_exporter.target_table_exists?).to be true
+        it "doesn't set an error" do
+          user_exporter.check_target_table
+          expect(user_exporter.errors).to be_nil
         end
       end
       context "when the target table doesn't exist on redshift" do
-        before { drop_redshift_table(:users) }
-        it "returns nil" do
-          expect(user_exporter.target_table_exists?).not_to be true
+        before(:all) { drop_redshift_table(:users) }
+        after(:all) { recreate_users_table }
+        it "sets the exporter to an error state" do
+          user_exporter.check_target_table
+          expect(user_exporter.errors).to be_present
         end
       end
     end
@@ -282,47 +212,54 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
     describe "#write_csv" do
     end
 
-    describe "export!" do
+    describe "#export" do
       before { allow(user_exporter).to receive(:fields_to_sync).and_return(%w(id login age)) }
       context "when there are incomplete replications" do
         before { create :redshift_replication, source_table: "users", state: "uploaded" }
         it "doesn't create replication record" do
-          user_exporter.export!
+          user_exporter.export
           expect(user_exporter.replication).to be_nil
         end
         it "returns nil" do
-          expect(user_exporter.export!).to be_nil
+          expect(user_exporter.export).to be_nil
         end
       end
       context "when there are no incomplete replications" do
         before { create :redshift_replication, source_table: "users", state: "imported" }
         context "and there are records to export" do
           before { create :user }
-          it "creates export files" do
-            file_paths = user_exporter.export!
-            expect(file_paths).to be_an_instance_of Array
-            expect(file_paths).to be_present
+          context 'and exporter is in error state' do
+            before { user_exporter.errors = 'some error' }
+            it 'returns false' do
+              expect(user_exporter.export).to be_nil
+            end
           end
-          it "flags replication as exported" do
-            user_exporter.export!
-            expect(user_exporter.replication.state).to eq "exported"
+          context 'and exporter is valid' do
+            it "creates export files" do
+              file_paths = user_exporter.export
+              expect(file_paths).to be_an_instance_of Array
+              expect(file_paths).to be_present
+            end
+            it "flags replication as exported" do
+              user_exporter.export
+              expect(user_exporter.replication.state).to eq "exported"
+            end
           end
         end
         context "and there aren't any records to export" do
           it "doesn't create replication record" do
-            user_exporter.export!
+            user_exporter.export
             expect(user_exporter.replication).to be_nil
           end
           it "retorns nil" do
-            expect(user_exporter.export!).to be_nil
+            expect(user_exporter.export).to be_nil
           end
         end
       end
     end
 
-    describe "split_file" do
+    describe "#split_file" do
       before do
-        allow(user_exporter).to receive(:row_count_threshold).and_return(33)
         allow(user_exporter).to receive(:local_file).and_return "/tmp/test"
       end
 
@@ -330,7 +267,7 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
         f = File.open("/tmp/test", "w")
         100.times{ f.puts "nothing here" }
         f.close
-        user_exporter.split_file("test", 100)
+        user_exporter.split_file("test", 4)
         %w(aa ab ac ad).each do |suffix|
           File.exists?("/tmp/test.#{suffix}").should be true
         end
@@ -391,49 +328,55 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
 
     describe "#export_and_upload" do
       context "when the target table doesn't exist on redshift" do
-        before do
-          drop_redshift_table(:users)
-        end
-        it "doesn't call #export!" do
+        before(:all) { drop_redshift_table(:users) }
+        after(:all)  { recreate_users_table }
+        it "doesn't call #export" do
           expect(user_exporter.export_and_upload).not_to receive(:export)
         end
       end
       context "when the target table exists on redshift" do
-        before(:all) do
-          recreate_users_table
-        end
-        it "calls #export!" do
-          expect(user_exporter).to receive(:export!)
+        before(:all) { recreate_users_table }
+        it "calls #export" do
+          expect(user_exporter).to receive(:export)
           user_exporter.export_and_upload
         end
         context "when there are records to export" do
-          before { allow(user_exporter).to receive(:export!).and_return("file") }
-          it "calls #upload!" do
-            expect(user_exporter).to receive(:upload!)
+          before { allow(user_exporter).to receive(:export).and_return("file") }
+          it "calls #upload" do
+            expect(user_exporter).to receive(:upload)
             user_exporter.export_and_upload
           end
         end
         context "when there are no records to export" do
-          it "doesn't call #upload!" do
-            expect(user_exporter.export_and_upload).not_to receive(:upload!)
+          it "doesn't call #upload" do
+            expect(user_exporter.export_and_upload).not_to receive(:upload)
           end
         end
 
       end
     end
 
-    describe "#upload!" do
+    describe "#upload" do
       context "with csv format" do
         let(:files) { %w(file1 file2) }
         before { user_exporter.replication = create(:redshift_replication, source_table: "users", export_format: "csv") }
-        it "calls csv uploader" do
-          expect(user_exporter).to receive(:upload_csv).with(files)
-          user_exporter.upload! files
+        before { user_exporter.file_names = files }
+        context 'when exporter is in an error state' do
+          before { user_exporter.errors = "some error"}
+          it 'returns nil' do
+            expect(user_exporter.upload).to be_nil 
+          end
         end
-        it "changes replication state to uploaded" do
-          expect(user_exporter).to receive(:upload_csv).with(files)
-          user_exporter.upload! files
-          expect(user_exporter.replication.state).to eq "uploaded"
+        context 'when exporter is valid' do
+          it "calls csv uploader" do
+            expect(user_exporter).to receive(:upload_csv).with(files)
+            user_exporter.upload
+          end
+          it "changes replication state to uploaded" do
+            expect(user_exporter).to receive(:upload_csv).with(files)
+            user_exporter.upload
+            expect(user_exporter.replication.state).to eq "uploaded"
+          end
         end
       end
     end
@@ -476,12 +419,6 @@ describe RailsRedshiftReplicator::Exporters::Base, type: :redshift_replicator, r
           user2 = create :user
           expect(user_exporter.last_record.to_s).to eq user2.id.to_s
         end
-      end
-    end
-
-    describe "s3_file_key" do
-      it "returns s3 handler for file" do
-        expect(user_exporter.s3_file_key("file.csv")).to eq "rrr/users/file.csv"
       end
     end
 

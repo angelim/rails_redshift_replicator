@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe RailsRedshiftReplicator::Model::Extension, type: :redshift_replicator, replicator: true do
+describe RailsRedshiftReplicator::Model::Extension do
   before { RailsRedshiftReplicator.debug_mode = true }
   describe "Integration tests" do
     describe 'IdentityReplicator' do
@@ -58,14 +58,14 @@ describe RailsRedshiftReplicator::Model::Extension, type: :redshift_replicator, 
     end
     describe 'FullReplicator' do
       before(:all) { recreate_tags_users_table }
-      before { RailsRedshiftReplicator.add_replicatable({ "tags_users" => RailsRedshiftReplicator::Replicatable.new(:full_replicator, source_table: :tags_users) }) }
+      before { RailsRedshiftReplicator.add_replicable({ "tags_users" => RailsRedshiftReplicator::Replicable.new(:full_replicator, source_table: :tags_users) }) }
       it "exports full replicator type replication" do
         model = :tags_users
         # first export
         tag = create :tag
         user = create :user
         tag.users << user
-        RailsRedshiftReplicator.replicatables[:tags_users].export
+        RailsRedshiftReplicator.replicables[:tags_users].export
         replication1 = RailsRedshiftReplicator::Replication.from_table("tags_users").last
         expect(replication1.state).to eq "uploaded"
         expect(replication1.record_count).to eq 1

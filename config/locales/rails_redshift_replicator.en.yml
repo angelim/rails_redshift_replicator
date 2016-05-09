@@ -7,5 +7,7 @@ en:
     missing_table: "Coudn't find table  %{table_name} on Redshift"
     missing_replicator_type: Replication type not implemented
     must_specify_tables: "Specify tables to export or use :all for all eligible tables"
-    replicatable_added: "Added replicatable for table '%{table_name}'"
+    replicable_added: "Added replicable for table '%{table_name}'"
     executing_query: "Executing query with %{adapter}: %{sql}"
+    nothing_to_import: "No replication for table '%{table_name}' was pending import"
+    table_not_replicable: The table '%{table_name}' is not registered as replicable

@@ -14,14 +14,8 @@ module RailsRedshiftReplicatorHelpers
     ClimateControl.modify(env, &block)
   end
 
-  # Resets RailsRailsRedshiftReplicator and load it with modified environment variables.
-  def reset_config
-    Object.send(:remove_const, "RailsRailsRedshiftReplicator")  
-    load File.expand_path('../../../lib/rails_redshift_replicator.rb', __FILE__)
-  end
-
   def replication_file(name)
-    File.open("spec/support/csv/redshift_replicator/#{name}")
+    File.open("spec/support/csv/#{name}")
   end
 
   # Changes ActiveRecord connection to Redshift for the duration of the example
