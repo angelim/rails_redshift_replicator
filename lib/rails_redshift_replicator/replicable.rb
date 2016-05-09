@@ -32,6 +32,14 @@ module RailsRedshiftReplicator
       RailsRedshiftReplicator::Replication.from_table(source_table).uploaded.last
     end
 
+    def vacuum
+      RailsRedshiftReplicator.vacuum(target_table)
+    end
+
+    def analyze
+      RailsRedshiftReplicator.analyze(target_table)
+    end
+
     def export
       exporter_class.new(self).export_and_upload
     end

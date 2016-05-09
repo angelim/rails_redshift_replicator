@@ -72,6 +72,8 @@ module RailsRedshiftReplicator
 
       # Command or path to executable that compresses files to gzip
       @@gzip_command = 'tar -czf'
+
+      return nil
     end
     alias redefine_defaults define_defaults
 

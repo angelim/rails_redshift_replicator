@@ -11,7 +11,7 @@ class CreateRailsRedshiftReplicatorReplications < ActiveRecord::Migration
       t.string   "source_table"
       t.string   "target_table"
       t.integer  "slices"
-      t.integer  "first_record"
+      t.string   "first_record"
       t.integer  "record_count"
       t.string   "export_format"
       t.integer  "export_duration"

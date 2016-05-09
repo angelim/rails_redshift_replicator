@@ -21,15 +21,20 @@ module RailsRedshiftReplicator
       end
     end
     module Actions
-      def rails_redshift_replicator_export
+      def rrr_export
         rails_redshift_replicator_replicable.export
       end
-      def rails_redshift_replicator_import
+      def rrr_import
         rails_redshift_replicator_replicable.import
       end
-
-      def rails_redshift_replicator_replicate
+      def rrr_replicate
         rails_redshift_replicator_replicable.replicate
+      end
+      def rrr_vaccum
+        rails_redshift_replicator_replicable.vaccum
+      end
+      def rrr_analyze
+        rails_redshift_replicator_replicable.analyze
       end
     end
   end

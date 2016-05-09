@@ -1,7 +1,7 @@
 FactoryGirl.define do
   factory :redshift_replication, class: 'RailsRedshiftReplicator::Replication' do
     export_format "csv"
-    replication_type "IdReplicator"
+    replication_type "identity_replicator"
     key "rdplibrary/replication/users/users_1442958786.csv"
     source_table "users"
   end
@@ -27,4 +27,5 @@ FactoryGirl.define do
   factory :tag do
     sequence(:name) { |n| "tag_#{n}" }
   end
+
 end
