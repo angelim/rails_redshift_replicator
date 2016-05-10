@@ -3,7 +3,7 @@ class Mylogger < Logger;end
 describe 'Setup Tests', :broken do
   describe ".setup" do
     context 'with default configuration' do
-      after(:all) { Dotenv.load File.expand_path("../spec/dummy/.env", __FILE__); RailsRedshiftReplicator.redefine_defaults }
+      after(:all) { Dotenv.load File.expand_path("../spec/dummy/.env", __FILE__); RailsRedshiftReplicator.reload }
       let(:env) do
         {
           RRR_REDSHIFT_HOST: 'default-host',
@@ -20,7 +20,7 @@ describe 'Setup Tests', :broken do
       end
       around do |example|
         ClimateControl.modify(env) do
-          RailsRedshiftReplicator.redefine_defaults
+          RailsRedshiftReplicator.reload
           example.run
         end
       end
@@ -70,7 +70,7 @@ describe 'Setup Tests', :broken do
       end
     end
     context 'when changing configuration' do
-      after(:all) { Dotenv.load File.expand_path("../spec/dummy/.env", __FILE__); RailsRedshiftReplicator.redefine_defaults }
+      after(:all) { Dotenv.load File.expand_path("../spec/dummy/.env", __FILE__); RailsRedshiftReplicator.reload }
       before do
         RailsRedshiftReplicator.setup do |config|
           config.redshift_connection_params = {

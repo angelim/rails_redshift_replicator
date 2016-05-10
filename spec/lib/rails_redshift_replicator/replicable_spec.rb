@@ -111,7 +111,8 @@ describe RailsRedshiftReplicator::Replicable do
           end
         end
       end
-      context 'and max_retries is not defined' do
+      context 'and max_retries is nil' do
+        before { RailsRedshiftReplicator.max_retries = nil }
         it 'calls the correspondent exporter class with previous replication' do
           allow(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive_message_chain(:new, :export_and_upload)
           expect(RailsRedshiftReplicator::Exporters::IdentityReplicator).to receive(:new).with(replicable, previous_replication)
