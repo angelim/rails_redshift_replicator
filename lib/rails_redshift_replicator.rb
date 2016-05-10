@@ -5,6 +5,7 @@ require 'rails_redshift_replicator/model/extension'
 require 'rails_redshift_replicator/model/hair_trigger_extension'
 require 'rails_redshift_replicator/replicable'
 require 'rails_redshift_replicator/deleter'
+require 'rails_redshift_replicator/rlogger'
 
 require 'rails_redshift_replicator/exporters/base'
 require 'rails_redshift_replicator/exporters/identity_replicator'
@@ -30,7 +31,7 @@ module RailsRedshiftReplicator
     # @note Useful for testing
     def define_defaults
       @@replicables = {}.with_indifferent_access
-      @@logger = Logger.new(STDOUT).tap{ |l| l.level = Logger::WARN }
+      @@logger = RLogger.new(STDOUT).tap{ |l| l.level = Logger::WARN }
       
       # Connection parameters for Redshift. Defaults to environment variables.
       @@redshift_connection_params = {
@@ -63,20 +64,21 @@ module RailsRedshiftReplicator
       # Folder to store temporary replication files until the S3 upload. Defaults to /tmp
       @@local_replication_path = '/tmp'
 
+      # Command or path to executable that splits files
+      @@split_command = 'split'
+
+      # Command or path to executable that compresses files to gzip
+      @@gzip_command = 'gzip'
+
       # Enable debug mode to output messages to STDOUT. Default to false
       @@debug_mode = false
 
       # Defines how many replication records are kept in history. Default to nil keeping full history.
       @@history_cap = nil
 
-      # Defines how many replication records are kept in history. Default to nil keeping full history.
+      # Defines how many errors are allowed to happen when importing into Redshfit
+      # see [http://docs.aws.amazon.com/redshift/latest/dg/copy-parameters-data-load.html#copy-maxerror]
       @@max_copy_errors = 0
-
-      # Command or path to executable that splits files
-      @@split_command = 'split'
-
-      # Command or path to executable that compresses files to gzip
-      @@gzip_command = 'gzip'
 
       # Preferred format for export file
       @@preferred_format = 'csv'
@@ -89,7 +91,7 @@ module RailsRedshiftReplicator
 
       return nil
     end
-    alias redefine_defaults define_defaults
+    alias reload define_defaults
 
     def debug_mode=(value)
       logger.level = value == true ? Logger::DEBUG : Logger::WARN
