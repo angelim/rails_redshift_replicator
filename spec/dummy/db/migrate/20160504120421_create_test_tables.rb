@@ -6,20 +6,20 @@ class CreateTestTables < ActiveRecord::Migration
       t.string :password
       t.integer :age
       t.boolean :confirmed
-      t.timestamps
+      t.timestamps null: false
     end
     add_index :users, [:login, :age]
     
     create_table :posts do |t|
       t.belongs_to :user
       t.text :content
-      t.timestamps
+      t.timestamps null: false
     end
     add_index :posts, [:user_id, :updated_at]
     
     create_table :tags do |t|
       t.string :name
-      t.timestamps
+      t.timestamps null: false
     end
     add_index :tags, [:name, :updated_at]
     
