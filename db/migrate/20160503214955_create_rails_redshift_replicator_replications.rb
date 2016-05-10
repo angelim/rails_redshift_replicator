@@ -17,7 +17,6 @@ class CreateRailsRedshiftReplicatorReplications < ActiveRecord::Migration
       t.integer  "export_duration"
       t.integer  "upload_duration"
       t.integer  "import_duration"
-      t.text     "ids_to_delete"
       t.datetime "created_at",                               :null => false
       t.datetime "updated_at",                               :null => false
     end
