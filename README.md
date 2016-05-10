@@ -199,12 +199,12 @@ RailsRedshiftReplicator.setup { |config| config.history_cap = 10 }
 
 ## Replication Retries
 
-If for any reason a replication fails RRR will retry it on the next replication process. The default configuration is to allow 5 retries, but you can specify it on a configuration block. RRR won't perform a whole new replication until an incomplete one is successful or canceled.
+If for any reason a replication fails, RRR will retry it on the next replication process. The default configuration is to allow 5 retries, but you can specify something else on a configuration block. RRR won't perform a whole new replication until an incomplete one has been flagged as imported or canceled.
 
-The behavior of the retry strategy is as following:
-If the replication stopped on (enqueued, exporting, exported, uploading) states, it exports the data again and then import to Redshift
-If the replication stopped on (uploaded importing) states, it skips the exporting process and performs the import directly.
-A replication is automaticaly canceled if it exceeds the maximum number of retries allows on the configuration. In that case, a new replication record is created.
+The behavior of the retry strategy is as follows:
+If the replication stopped at (enqueued, exporting, exported, uploading) states, it exports the data again and then import to Redshift
+If the replication stopped at (uploaded importing) states, it skips the exporting process and performs the import directly.
+A replication is automaticaly canceled if it exceeds the maximum number of allowed retries. In that case, a new replication record is created.
 
 #### Helper methods for Replication
 
