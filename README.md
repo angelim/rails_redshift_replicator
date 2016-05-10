@@ -120,8 +120,9 @@ Most of the configuration can be done with environment variables(at least the se
 ```ruby
 RailsRedshiftReplicator.setup do |config|
 
-  # RRR already provides a logger pointing to STDOUT, but you can point it to your own logger
-  # as long as it is compliant to the Ruby Logger class interface.
+  # RRR already provides a logger pointing to STDOUT, but you can point it to your own logger.
+  # Just be sure to make it inherit from RailsRedshiftReplicator::RLogger or you will loose
+  # the notifications feature.
   config.logger = MyLogger.new
 
   # Connection parameters for Redshift. Defaults to environment variables.
