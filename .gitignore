@@ -7,4 +7,8 @@ spec/dummy/log/*.log
 spec/dummy/tmp/
 spec/dummy/.sass-cache
 spec/dummy/.env*
+spec/dummy/db/schema.rb
+spec/dummy/config
+spec/dummy/rails_redshift_replicator_development
 .rspec
+personal/*
