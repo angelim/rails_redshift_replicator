@@ -110,7 +110,7 @@ User.rrr_import
 
 ```
 
-RRR will filter out tables that are not registered for replication and log them for you.
+RRR will filter out tables that are not registered for replication and log them for you. It will also wrap the import stage in a transaction and it is automatically rolled back if any problem arrises.
 
 
 ## Configuration
@@ -342,6 +342,11 @@ crontab -e
 0 * * * * cd path/to/my/app && bundle exec rails runner "RailsRedshiftReplicator.replicate(:all)"
 ```
 You can also create a bash script to make it more concise.
+
+## Disclaimer
+Please test this gem before using it on production. This project is still on it's infancy and hasn't been extensively tested in the real world. The rspec tests may not be comprehensive enough to take your use case or environment into account.
+
+Try it on a test Redshift database before pointing it to your production tables. There isn't any code here that could affect your source tables, but writing to Redshift is a destructive process.
 
 ## How to contribute
 TODO
