@@ -14,13 +14,30 @@ describe 'Integration Tests' do
 
   describe '.replicate' do
     context 'replicating users' do
-      before(:all) { recreate_users_table }
-      before do
-        5.times { create :user }
+      context 'without deleted records' do
+        before(:all) { recreate_users_table }
+        before do
+          5.times { create :user }
+        end
+        it 'replicates 5 users' do
+          RailsRedshiftReplicator.replicate :users
+          expect(redshift_counts('users')).to eq 5
+        end
       end
-      it 'replicates 5 users' do
-        RailsRedshiftReplicator.replicate :users
-        expect(redshift_counts('users')).to eq 5
+      context 'with deleted records', focus: true do
+        before(:all) { recreate_users_table }
+        before do
+          5.times { create :user }
+        end
+        it 'replicates 5 users' do
+          first_user = User.first
+          RailsRedshiftReplicator.replicate :users
+          expect(redshift_counts('users')).to eq 5
+          first_user.destroy
+          expect(User.rrr_deleter.deleted_ids.count).to eq 1
+          RailsRedshiftReplicator.replicate :users
+          expect(redshift_counts('users')).to eq 4
+        end
       end
     end
     context 'replicating users and posts' do
@@ -43,7 +60,7 @@ describe 'Integration Tests' do
           recreate_tags_users_table
           recreate_tags_table(:custom_tags)
         end
-        it 'replicates 15 users, 10 posts, 25 tags_users and 25 tags', focus: true do
+        it 'replicates 15 users, 10 posts, 25 tags_users and 25 tags' do
           5.times { create :user_with_tags }
           10.times { create :post } # creates one user for each post
 

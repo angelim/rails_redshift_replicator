@@ -36,6 +36,9 @@ module RailsRedshiftReplicator
       def rrr_analyze
         rails_redshift_replicator_replicable.analyze
       end
+      def rrr_deleter
+        rails_redshift_replicator_replicable.deleter
+      end
     end
   end
 end

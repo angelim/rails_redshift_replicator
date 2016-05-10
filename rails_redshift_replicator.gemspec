@@ -21,6 +21,7 @@ Gem::Specification.new do |s|
   s.add_dependency "pg", '~> 0.18'
   s.add_dependency "activerecord-redshift-adapter"
   s.add_dependency "fog"
+  s.add_dependency 'hairtrigger', '~> 0.2.17'
 
   s.add_development_dependency "sqlite3", '~> 1.3'
   s.add_development_dependency 'mysql2', '~> 0.3.16'

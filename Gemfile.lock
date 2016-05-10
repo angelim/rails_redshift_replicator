@@ -4,6 +4,7 @@ PATH
     rails_redshift_replicator (0.0.1)
       activerecord-redshift-adapter
       fog
+      hairtrigger (~> 0.2.17)
       pg (~> 0.18)
       rails (~> 4.0)
 
@@ -155,6 +156,10 @@ GEM
     formatador (0.2.5)
     globalid (0.3.6)
       activesupport (>= 4.1.0)
+    hairtrigger (0.2.17)
+      activerecord (>= 2.3)
+      ruby2ruby (~> 2.0)
+      ruby_parser (~> 3.7)
     i18n (0.7.0)
     inflecto (0.0.2)
     ipaddress (0.8.0)
@@ -229,6 +234,12 @@ GEM
       rspec-mocks (~> 3.4.0)
       rspec-support (~> 3.4.0)
     rspec-support (3.4.1)
+    ruby2ruby (2.3.0)
+      ruby_parser (~> 3.1)
+      sexp_processor (~> 4.0)
+    ruby_parser (3.8.2)
+      sexp_processor (~> 4.1)
+    sexp_processor (4.7.0)
     shoulda-matchers (3.1.1)
       activesupport (>= 4.0.0)
     slop (3.6.0)

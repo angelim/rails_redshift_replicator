@@ -51,6 +51,7 @@ module RailsRedshiftReplicator
 
       # Exports and uploads selected records from the source_table
       def export_and_upload(options = {})
+        RailsRedshiftReplicator::Deleter.new(replicable).handle_delete_propagation
         files = export options
         upload files
         replication

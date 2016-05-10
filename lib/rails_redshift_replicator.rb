@@ -1,7 +1,10 @@
+require 'hair_trigger'
 require 'active_support'
 require "rails_redshift_replicator/engine"
 require 'rails_redshift_replicator/model/extension'
+require 'rails_redshift_replicator/model/hair_trigger_extension'
 require 'rails_redshift_replicator/replicable'
+require 'rails_redshift_replicator/deleter'
 
 require 'rails_redshift_replicator/exporters/base'
 require 'rails_redshift_replicator/exporters/identity_replicator'
@@ -16,10 +19,11 @@ require 'rails_redshift_replicator/importers/full_replicator'
 require 'rails_redshift_replicator/tools/analyze'
 require 'rails_redshift_replicator/tools/vacuum'
 
+
 module RailsRedshiftReplicator
   mattr_accessor :replicables, :logger, :redshift_connection_params, :aws_credentials, :s3_bucket_params,
                  :redshift_slices, :local_replication_path, :debug_mode, :history_cap, :max_copy_errors,
-                 :split_command, :gzip_command, :preferred_format, :max_retries
+                 :split_command, :gzip_command, :preferred_format, :max_retries, :enable_delete_tracking
 
   class << self
 
@@ -74,9 +78,14 @@ module RailsRedshiftReplicator
       # Command or path to executable that compresses files to gzip
       @@gzip_command = 'gzip'
 
+      # Preferred format for export file
       @@preferred_format = 'csv'
 
+      # Maximum number of retries for a replication before cancelling and starting another
       @@max_retries = nil
+
+      # If deletes should be tracked and propagated to redshift
+      @@enable_delete_tracking = false
 
       return nil
     end
@@ -95,6 +104,13 @@ module RailsRedshiftReplicator
     def add_replicable(hash)
       logger.debug I18n.t(:replicable_added, table_name: hash.keys.first, scope: :rails_redshift_replicator) 
       RailsRedshiftReplicator.replicables.merge! hash
+    end
+
+    def reload_replicables
+      replicables = {}
+      replicables.each do |name, replicable|
+        add_replicable(name => RailsRedshiftReplicator::Replicable.new(replicable.replication_type, replicable.options))
+      end
     end
 
     # Performs full replication (export + import)

@@ -73,12 +73,12 @@ module RailsRedshiftReplicator
 
       # Creates a temporary table on redshift
       def create_temp_table
-        ::RailsRedshiftReplicator.connection.exec "CREATE TEMP TABLE #{temporary_table_name} (LIKE #{replication.target_table})"
+        RailsRedshiftReplicator.connection.exec "CREATE TEMP TABLE #{temporary_table_name} (LIKE #{replication.target_table})"
       end
 
       # Creates a permanent table for later renaming
       def create_side_table
-        ::RailsRedshiftReplicator.connection.exec "CREATE TABLE #{temporary_table_name} (LIKE #{replication.target_table})"
+        RailsRedshiftReplicator.connection.exec "CREATE TABLE #{temporary_table_name} (LIKE #{replication.target_table})"
       end
 
       # Runs a merge or replace operation on a redshift table

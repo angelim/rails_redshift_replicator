@@ -1,6 +1,9 @@
 module RailsRedshiftReplicator
   class Replicable
-    attr_reader :source_table, :target_table, :replication_field, :replication_type
+    include HairTrigger::Base
+    attr_reader :source_table, :target_table, :replication_field, :replication_type, :tracking_deleted, :options
+    # alias for hairtrigger
+    alias table_name source_table
 
     # @param replication_type [String, Symbol]
     # @param options [Hash] Replication options
@@ -9,10 +12,27 @@ module RailsRedshiftReplicator
     # @option options [String, Symbol] :replication_field name of the replication field
     def initialize(replication_type, options = {})
       @replication_type = replication_type
+      @options = options
       @source_table = options[:source_table].to_s
       @target_table = (options[:target_table] || source_table).to_s
       replication_field = options[:replication_field] || exporter_class.replication_field
       @replication_field = replication_field && replication_field.to_s
+      @tracking_deleted = delete_tracking_enabled?
+      if tracking_deleted
+        trigger.after(:delete) do
+          "INSERT INTO rails_redshift_replicator_deleted_ids(source_table, object_id) VALUES('#{source_table}', OLD.id);"
+        end
+      end
+    end
+
+    def delete_tracking_enabled?
+      RailsRedshiftReplicator.enable_delete_tracking &&
+      (options[:enable_delete_tracking].blank? || options[:enable_delete_tracking]) &&
+      table_supports_tracking?
+    end
+
+    def table_supports_tracking?
+      ActiveRecord::Base.connection.columns(source_table).map(&:name).include? "id"
     end
 
     def replicate
@@ -93,6 +113,10 @@ module RailsRedshiftReplicator
 
     def analyze
       RailsRedshiftReplicator.analyze(target_table)
+    end
+
+    def deleter
+      RailsRedshiftReplicator::Deleter.new(self)
     end
 
     def exporter_class
