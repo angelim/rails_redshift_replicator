@@ -39,7 +39,7 @@ describe 'Integration Tests' do
           expect(redshift_counts('users')).to eq 4
         end
       end
-      context 'with history cap', :focus do
+      context 'with history cap' do
         before(:all) { recreate_users_table }
         before do
           RailsRedshiftReplicator.history_cap = 2
@@ -50,6 +50,19 @@ describe 'Integration Tests' do
           RailsRedshiftReplicator.replicate :users
           expect(redshift_counts('users')).to eq 5
           expect(RailsRedshiftReplicator::Replication.count).to eq 2
+        end
+      end
+      context 'forcing full replication', :focus do
+        before(:all) { recreate_users_table }
+        before do
+          5.times { create :user }
+        end
+        it 'replicates 5 users 2 times' do
+          RailsRedshiftReplicator.replicate :users
+          expect(redshift_counts('users')).to eq 5
+          RailsRedshiftReplicator.replicables['users'].reset_last_record
+          RailsRedshiftReplicator.replicate :users
+          expect(redshift_counts('users')).to eq 10
         end
       end
     end

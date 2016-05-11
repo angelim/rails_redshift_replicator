@@ -191,6 +191,24 @@ describe RailsRedshiftReplicator::Replicable do
     end
   end
 
+  describe '#reset_last_record' do
+    let(:replicable) { RailsRedshiftReplicator::Replicable.new(:identity_replicator, source_table: 'users') }  
+    context 'when there is no previous imported replications' do
+      it 'does not try to update' do
+        expect_any_instance_of(RailsRedshiftReplicator::Replication).not_to receive(:update_attribute)
+        replicable.reset_last_record
+      end
+    end
+    context 'when there is a previous imported replication' do
+      let!(:replication) { create :redshift_replication, source_table: 'users', state:'imported', last_record: '2' }
+      it 'resets most recent imported replication last record to perform full replication afterwards' do
+        replicable.reset_last_record
+        expect(replication.reload.last_record).to be_nil
+      end
+    end
+
+  end
+
   describe '#vacuum' do
     let(:replicable) { RailsRedshiftReplicator::Replicable.new(:identity_replicator, source_table: 'users', target_table: 'custom_users') }  
     it 'calls the central vacuum method' do

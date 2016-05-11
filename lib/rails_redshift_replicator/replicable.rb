@@ -25,6 +25,11 @@ module RailsRedshiftReplicator
       end
     end
 
+    def reset_last_record
+      last_imported_replication = RailsRedshiftReplicator::Replication.from_table(source_table).with_state(:imported).last
+      last_imported_replication && last_imported_replication.update_attribute(:last_record, nil)
+    end
+
     def delete_tracking_enabled?
       RailsRedshiftReplicator.enable_delete_tracking &&
       (options[:enable_delete_tracking].blank? || options[:enable_delete_tracking]) &&

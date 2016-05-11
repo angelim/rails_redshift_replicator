@@ -333,6 +333,21 @@ Post.analyze
 
 ```
 
+## Forcing Full Replication
+
+If you need to append another column to Redshift and would like to replicate all records from the source table, you should truncate the target table on Redshift and perform one of these two options:
+
+```ruby
+# Delete all replication records for that table(this may be undesireable):
+RailsRedshiftReplicator::Replication.where(source_table: 'users').delete_all
+
+# Reset the 'last_record' field from the most recent imported replication:
+RailsRedshiftReplicator.replicables['users'].reset_last_record
+
+```
+
+The following replication will export all records from the source table.
+
 ## Scheduling Replications
 
 It's only natural that you'd like to schedule replications to run periodically. Be careful to not schedule them in an unfeasible interval, trying to create a new replication before the previous one has had time to finish. Run some by hand and take a look at the Replication history duration fields (#export_duration, #upload_duration and #import_duration) or even the difference between #updated_at and #created_at. Remember that if you try to run a new replication before the previous one finishes you will trigger a retry.
