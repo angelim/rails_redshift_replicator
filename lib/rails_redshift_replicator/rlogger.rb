@@ -1,21 +1,11 @@
 module RailsRedshiftReplicator
   class RLogger < ::Logger
-    CHANNEL = 'rails_redshift_replicator'
-    def info(message)
-      ActiveSupport::Notifications.instrument(CHANNEL, type: :info, message: message) do
-        super message
-      end
-    end
-
-    def debug(message)
-      ActiveSupport::Notifications.instrument(CHANNEL, type: :debug, message: message) do
-        super message
-      end
-    end
-
-    def error(message)
-      ActiveSupport::Notifications.instrument(CHANNEL, type: :error, message: message) do
-        super message
+    # Overrides logger methods to notify subscribers
+    %w(info warn debug error).each do |severity|
+      define_method severity do |message|
+        ActiveSupport::Notifications.instrument('rails_redshift_replicator', type: severity.to_sym, message: message) do
+          super message
+        end
       end
     end
   end
