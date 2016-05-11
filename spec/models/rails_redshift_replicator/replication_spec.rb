@@ -18,6 +18,27 @@ describe RailsRedshiftReplicator::Replication, type: :model do
       end
     end
   end
+  describe '.cap_id' do
+    context 'when there are more replications than cap number' do
+      it 'returns the id of the replication based on the cap number' do
+        2.times { create :redshift_replication, source_table: 'users' }
+        rep =   create :redshift_replication, source_table: 'users'
+        3.times { create :redshift_replication, source_table: 'users' }
+        expect(RailsRedshiftReplicator::Replication.cap_id('users', 4)).to eq rep.id
+      end
+    end
+    context 'when there are no replications' do
+      it 'returns nil' do
+        expect(RailsRedshiftReplicator::Replication.cap_id('users', 4)).to be_nil  
+      end
+    end
+    context 'when there are less replications then the cap number' do
+      it 'retuns nil' do
+        3.times { create :redshift_replication, source_table: 'users' }
+        expect(RailsRedshiftReplicator::Replication.cap_id('users', 4)).to be_nil
+      end
+    end
+  end
   describe "State helper methods" do
     RailsRedshiftReplicator::Replication::STATES.each do |state|
       it "responds to ##{state}?" do

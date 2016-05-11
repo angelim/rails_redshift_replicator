@@ -7,6 +7,7 @@ module RailsRedshiftReplicator
         return if replication.error?
         replication.clear_errors!
         replication.update_attributes import_duration: (Time.now-import_start).ceil
+        evaluate_history_cap
       end
     end
   end

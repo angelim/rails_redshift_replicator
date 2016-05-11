@@ -9,6 +9,7 @@ module RailsRedshiftReplicator
         merge_or_replace(mode: :replace)
         replication.clear_errors!
         replication.imported! import_duration: (Time.now-import_start).ceil
+        evaluate_history_cap
       end
     end
   end

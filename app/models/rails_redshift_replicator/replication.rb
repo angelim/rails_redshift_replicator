@@ -39,6 +39,12 @@ module RailsRedshiftReplicator
     
     scope :from_table, ->(table) { where(source_table: Array(table).map(&:to_s)).where.not(state: 'canceled') }
     scope :with_state, ->(state) { where(state: state) }
+    scope :older_than, ->(table, cap) { where("id < ?", cap_id(table, cap)) }
+
+    def self.cap_id(table, cap)
+      return unless cap
+      where(source_table: table).order("id desc").limit(cap).pluck(:id)[cap-1]
+    end
 
     # Builds helper methods to identify export format.
     # @return [true, false] if export is in a given format.

@@ -79,7 +79,32 @@ describe RailsRedshiftReplicator do
         expect { RailsRedshiftReplicator.setup {|config| config.debug_mode = false} }.to change(RailsRedshiftReplicator.logger, :level).to(Logger::WARN)
       end
     end
-
+  end
+  describe '.history_cap=', :focus do
+    context 'when nil' do
+      it 'assigns nil' do
+        RailsRedshiftReplicator.history_cap = nil
+        expect(RailsRedshiftReplicator.history_cap).to be_nil
+      end
+    end
+    context 'when 2' do
+      it 'assigns 2' do
+        RailsRedshiftReplicator.history_cap = 2
+        expect(RailsRedshiftReplicator.history_cap).to eq 2
+      end
+    end
+    context 'when > 2' do
+      it 'assigns given cap' do
+        RailsRedshiftReplicator.history_cap = 5
+        expect(RailsRedshiftReplicator.history_cap).to eq 5
+      end
+    end
+    context 'when < 2' do
+      it 'assigns 2' do
+        RailsRedshiftReplicator.history_cap = 1
+        expect(RailsRedshiftReplicator.history_cap).to eq 2
+      end
+    end
   end
 
 end

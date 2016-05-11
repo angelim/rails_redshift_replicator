@@ -4,6 +4,17 @@ describe RailsRedshiftReplicator::Importers::Base do
   let(:replication) { build :redshift_replication, target_table: "users", key: 'rrr/users/users_1.csv.0'}
   let(:importer) { RailsRedshiftReplicator::Importers::IdentityReplicator.new(replication) }
 
+  describe '#evaluate_history_cap' do
+    before { 10.times {create :redshift_replication, source_table: 'users'} }
+    let!(:keep1) { create :redshift_replication, source_table: 'users' }
+    let!(:keep2) { create :redshift_replication, source_table: 'users' }
+    let!(:keep3) { create :redshift_replication, source_table: 'users' }
+    before { RailsRedshiftReplicator.history_cap = 3 }
+    it 'keeps only the records allowed by the history cap' do
+      importer.evaluate_history_cap
+      expect(RailsRedshiftReplicator::Replication.where(source_table: 'users')).to contain_exactly(keep1, keep2, keep3)
+    end
+  end
   describe "#copy" do
     let(:exporter) { user_exporter }
     before(:all) do
@@ -12,7 +23,6 @@ describe RailsRedshiftReplicator::Importers::Base do
       exporter.replication_bucket.files.create key: exporter.s3_file_key('users','valid_user.csv'), body: replication_file("valid_user.csv")
       exporter.replication_bucket.files.create key: exporter.s3_file_key('users','invalid_user.csv'), body: replication_file("invalid_user.csv")
     end
-
     context "with valid file" do
       before { importer.replication.key = RailsRedshiftReplicator::Exporters::Base.s3_file_key('users','valid_user.csv')}
       context "when flag as imported option is set to true" do

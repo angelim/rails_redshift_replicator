@@ -10,6 +10,7 @@ module RailsRedshiftReplicator
         drop_table temporary_table_name
         replication.clear_errors!
         replication.imported! import_duration: (Time.now-import_start).ceil
+        evaluate_history_cap
       end
     end
   end

@@ -12,6 +12,13 @@ module RailsRedshiftReplicator
         raise NotImplementedError
       end
 
+      # History Cap has a minimum of 2
+      def evaluate_history_cap
+        if cap = RailsRedshiftReplicator.history_cap
+          RailsRedshiftReplicator::Replication.older_than(replication.source_table, cap).delete_all
+        end
+      end
+
       # Runs Redshift COPY command to import data from S3
       # (http://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html)
       # @param [String] table name

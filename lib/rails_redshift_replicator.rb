@@ -98,6 +98,10 @@ module RailsRedshiftReplicator
       @@debug_mode = value
     end
 
+    def history_cap=(value)
+      @@history_cap = value && [value,2].max
+    end
+
     # @return [RedshiftReplicator]
     def setup
       yield self

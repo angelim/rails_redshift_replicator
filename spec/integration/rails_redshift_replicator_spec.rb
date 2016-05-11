@@ -24,7 +24,7 @@ describe 'Integration Tests' do
           expect(redshift_counts('users')).to eq 5
         end
       end
-      context 'with deleted records', focus: true do
+      context 'with deleted records' do
         before(:all) { recreate_users_table }
         before do
           5.times { create :user }
@@ -37,6 +37,19 @@ describe 'Integration Tests' do
           expect(User.rrr_deleter.deleted_ids.count).to eq 1
           RailsRedshiftReplicator.replicate :users
           expect(redshift_counts('users')).to eq 4
+        end
+      end
+      context 'with history cap', :focus do
+        before(:all) { recreate_users_table }
+        before do
+          RailsRedshiftReplicator.history_cap = 2
+          10.times {create :redshift_replication, source_table: 'users', state: 'imported'}
+          5.times { create :user }
+        end
+        it 'caps history after import' do
+          RailsRedshiftReplicator.replicate :users
+          expect(redshift_counts('users')).to eq 5
+          expect(RailsRedshiftReplicator::Replication.count).to eq 2
         end
       end
     end
