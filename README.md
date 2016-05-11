@@ -24,6 +24,7 @@ Install the configuration template and copy migrations with:
 
 ```bash
 rails generate rails_redshift_replicator:install
+rake rails_redshift_replicator:install:migrations
 ```
 Run the migrations and take a look at `config/initializers/rails_redshift_replicator.rb` for some [Configuration](#configuration) examples.
 
