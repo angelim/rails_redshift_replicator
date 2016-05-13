@@ -19,6 +19,10 @@ module RailsRedshiftReplicator
         end
       end
 
+      def file_manager
+        @file_manager ||= RailsRedshiftReplicator::FileManager.new(self)
+      end
+
       # Runs Redshift COPY command to import data from S3
       # (http://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html)
       # @param [String] table name

@@ -11,6 +11,7 @@ module RailsRedshiftReplicator
         replication.clear_errors!
         replication.imported! import_duration: (Time.now-import_start).ceil
         evaluate_history_cap
+        file_manager.delete if RailsRedshiftReplicator.delete_s3_file_after_import
       end
     end
   end

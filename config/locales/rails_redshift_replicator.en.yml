@@ -17,3 +17,4 @@ en:
     resuming_replication: "Resuming %{action} replication for table '%{table_name}', which was on %{state} state"
     propagating_deletes: "Propagating %{count} deleted records from table '%{table_name}'"
     delete_propagation_error: "Failed to propagate %{count} deleted records from table '%{table_name}'"
+    deleting_file: "Deleting file on s3: %{key}"

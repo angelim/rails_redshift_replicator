@@ -25,7 +25,8 @@ require 'rails_redshift_replicator/tools/vacuum'
 module RailsRedshiftReplicator
   mattr_accessor :replicables, :logger, :redshift_connection_params, :aws_credentials, :s3_bucket_params,
                  :redshift_slices, :local_replication_path, :debug_mode, :history_cap, :max_copy_errors,
-                 :split_command, :gzip_command, :preferred_format, :max_retries, :enable_delete_tracking
+                 :split_command, :gzip_command, :preferred_format, :max_retries, :enable_delete_tracking,
+                 :delete_s3_file_after_import
 
   class << self
 
@@ -89,6 +90,9 @@ module RailsRedshiftReplicator
 
       # If deletes should be tracked and propagated to redshift
       @@enable_delete_tracking = false
+
+      # If exported files on s3 should be deleted after imported
+      @@delete_s3_file_after_import = true
 
       return nil
     end

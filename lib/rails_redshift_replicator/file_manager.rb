@@ -21,6 +21,24 @@ module RailsRedshiftReplicator
       @exporter = exporter
     end
 
+    def bucket
+      RailsRedshiftReplicator.s3_bucket_params[:bucket]
+    end
+
+    def delete
+      response = s3_replication_files
+      if response.contents
+        response.contents.each do |file|
+          RailsRedshiftReplicator.logger.info I18n.t(:deleting_file, key: file.key, scope: :rails_redshift_replicator)
+          s3_client.delete_object(bucket: bucket, key: file.key)
+        end
+      end
+    end
+
+    def s3_replication_files
+      s3_client.list_objects(bucket: bucket, prefix: exporter.replication.key)
+    end
+
     def temp_file_name
       "#{exporter.source_table}_#{Time.now.to_i}.csv"
     end
@@ -83,7 +101,7 @@ module RailsRedshiftReplicator
         s3_client.put_object(
           key: self.class.s3_file_key(exporter.source_table, gzipped(basename)),
           body: File.open(gzipped(file)),
-          bucket: RailsRedshiftReplicator.s3_bucket_params[:bucket]
+          bucket: bucket
         )
       end
       files.each { |f| FileUtils.rm f }
@@ -107,7 +125,7 @@ module RailsRedshiftReplicator
         s3_client.put_object(
           key: self.class.s3_file_key(exporter.source_table, basename),
           body: File.open(file),
-          bucket: RailsRedshiftReplicator.s3_bucket_params[:bucket]
+          bucket: bucket
         )
       end
       files.each { |f| FileUtils.rm f }

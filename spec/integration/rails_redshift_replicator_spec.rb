@@ -14,15 +14,34 @@ describe 'Integration Tests' do
 
   describe '.replicate' do
     context 'replicating users' do
-      context 'without deleted records' do
+      context 'without deleted records', focus: true do
         before(:all) { recreate_users_table }
         before do
           5.times { create :user }
         end
-        it 'replicates 5 users', focus: true do
+        let(:file_manager)    { RailsRedshiftReplicator::FileManager.new }
+        let(:bucket)          { RailsRedshiftReplicator.s3_bucket_params[:bucket]}
+        let(:s3_bucket)       { Aws::S3::Bucket.new(name: bucket, client: file_manager.s3_client) }
+        let(:last_replication){ RailsRedshiftReplicator::Replication.last }
+        it 'replicates 5 users' do
           RailsRedshiftReplicator.replicate :users
           expect(redshift_counts('users')).to eq 5
         end
+        context 'with auto delete from s3' do
+          before { RailsRedshiftReplicator.delete_s3_file_after_import = true }
+          it 'deletes files from s3 after replication', focus: true do
+            RailsRedshiftReplicator.replicate :users
+            expect(file_manager.s3_client.list_objects(bucket: bucket, prefix: last_replication.key).contents).to be_empty
+          end
+        end
+        context 'without auto delete from s3' do
+          before { RailsRedshiftReplicator.delete_s3_file_after_import = false }
+          it 'keeps files from s3 after replication', focus: true do
+            RailsRedshiftReplicator.replicate :users
+            expect(file_manager.s3_client.list_objects(bucket: bucket, prefix: last_replication.key).contents).not_to be_empty
+          end
+        end
+
       end
       context 'with deleted records' do
         before(:all) { recreate_users_table }
