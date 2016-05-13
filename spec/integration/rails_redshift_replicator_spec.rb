@@ -19,7 +19,7 @@ describe 'Integration Tests' do
         before do
           5.times { create :user }
         end
-        it 'replicates 5 users' do
+        it 'replicates 5 users', focus: true do
           RailsRedshiftReplicator.replicate :users
           expect(redshift_counts('users')).to eq 5
         end
@@ -52,7 +52,7 @@ describe 'Integration Tests' do
           expect(RailsRedshiftReplicator::Replication.count).to eq 2
         end
       end
-      context 'forcing full replication', :focus do
+      context 'forcing full replication' do
         before(:all) { recreate_users_table }
         before do
           5.times { create :user }

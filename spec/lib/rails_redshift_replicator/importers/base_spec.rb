@@ -19,12 +19,14 @@ describe RailsRedshiftReplicator::Importers::Base do
     let(:exporter) { user_exporter }
     before(:all) do
       recreate_users_table
-      exporter = RailsRedshiftReplicator::Exporters::Base
-      exporter.replication_bucket.files.create key: exporter.s3_file_key('users','valid_user.csv'), body: replication_file("valid_user.csv")
-      exporter.replication_bucket.files.create key: exporter.s3_file_key('users','invalid_user.csv'), body: replication_file("invalid_user.csv")
+      file_manager = RailsRedshiftReplicator::FileManager.new
+      # exporter = RailsRedshiftReplicator::Exporters::Base
+      file_manager.s3_client.put_object key: RailsRedshiftReplicator::FileManager.s3_file_key('users','valid_user.csv'), body: replication_file("valid_user.csv"), bucket: RailsRedshiftReplicator.s3_bucket_params[:bucket]
+      file_manager.s3_client.put_object key: RailsRedshiftReplicator::FileManager.s3_file_key('users','invalid_user.csv'), body: replication_file("invalid_user.csv"), bucket: RailsRedshiftReplicator.s3_bucket_params[:bucket]
+      # exporter.replication_bucket.files.create key: exporter.s3_file_key('users','invalid_user.csv'), body: replication_file("invalid_user.csv")
     end
     context "with valid file" do
-      before { importer.replication.key = RailsRedshiftReplicator::Exporters::Base.s3_file_key('users','valid_user.csv')}
+      before { importer.replication.key = RailsRedshiftReplicator::FileManager.s3_file_key('users','valid_user.csv')}
       context "when flag as imported option is set to true" do
         let(:options) { {mark_as_imported: true} }
         it "flags as imported" do
@@ -40,7 +42,7 @@ describe RailsRedshiftReplicator::Importers::Base do
     end
     context "with invalid file" do
       let(:options) { {mark_as_imported: true} }
-      before { importer.replication.key = RailsRedshiftReplicator::Exporters::Base.s3_file_key('users','invalid_user.csv')}
+      before { importer.replication.key = RailsRedshiftReplicator::FileManager.s3_file_key('users','invalid_user.csv')}
       it "finds error on redshift" do
         expect(importer).to receive(:get_redshift_error)
         importer.copy(importer.replication.target_table, options)

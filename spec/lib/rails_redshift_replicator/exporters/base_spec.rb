@@ -5,36 +5,43 @@ describe RailsRedshiftReplicator::Exporters::Base do
   let(:user_replicable)  { RailsRedshiftReplicator::Replicable.new(:identity_replicator, source_table: :users)}
   let(:post_replicable)  { RailsRedshiftReplicator::Replicable.new(:timed_replicator, source_table: :posts)}
   let(:full_replicable)  { RailsRedshiftReplicator::Replicable.new(:full_replicator, source_table: :tags_users)}
-  let(:user_exporter)      { RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicable) }
-  let(:post_exporter)      { RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicable) }
-  let(:habtm_exporter)     { RailsRedshiftReplicator::Exporters::FullReplicator.new(full_replicable) }
+  let(:user_exporter)    { RailsRedshiftReplicator::Exporters::IdentityReplicator.new(user_replicable) }
+  let(:post_exporter)    { RailsRedshiftReplicator::Exporters::TimedReplicator.new(post_replicable) }
+  let(:habtm_exporter)   { RailsRedshiftReplicator::Exporters::FullReplicator.new(full_replicable) }
   before { RailsRedshiftReplicator.debug_mode = true }
 
-  describe ".s3_file_key" do
-    it "returns s3 handler for file" do
-      expect(RailsRedshiftReplicator::Exporters::Base.s3_file_key("users","file.csv")).to eq "rrr/users/file.csv"
-    end
-  end
 
-  # Requires previous bucket creation on s3
-  describe ".replication_bucket" do
-    it "returns a connection to the s3 replication bucket defined during setup" do
-      expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket).to be_a ::Fog::Storage::AWS::Directory
-      expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket.key).to eq "rrr-s3-test"
-    end
-  end
-
-  describe ".s3_connection" do
-    it "returns connection to s3" do
-      expect(RailsRedshiftReplicator::Exporters::Base.s3_connection).to be_a ::Fog::Storage::AWS::Real
-    end
-  end
 
   describe 'Instance Methods' do
     describe "#table_indexes" do
       context "with User model" do
         it "returns user's table indexes" do
           expect(user_exporter.table_indexes).to contain_exactly("id", "login", "age")
+        end
+      end
+    end
+    
+    describe "#upload" do
+      context "with csv format" do
+        let(:files) { %w(file1 file2) }
+        before { user_exporter.replication = create(:redshift_replication, source_table: "users", export_format: "csv") }
+        before { user_exporter.file_names = files }
+        context 'when exporter is in an error state' do
+          before { user_exporter.errors = "some error"}
+          it 'returns nil' do
+            expect(user_exporter.upload).to be_nil 
+          end
+        end
+        context 'when exporter is valid', focus: true do
+          it "calls csv uploader" do
+            expect(user_exporter.file_manager).to receive(:upload_csv).with(files)
+            user_exporter.upload
+          end
+          it "changes replication state to uploaded" do
+            expect(user_exporter.file_manager).to receive(:upload_csv).with(files)
+            user_exporter.upload
+            expect(user_exporter.replication.state).to eq "uploaded"
+          end
         end
       end
     end
@@ -113,7 +120,7 @@ describe RailsRedshiftReplicator::Exporters::Base do
           user_exporter.records(5)
         end
       end
-      context "when adapter is SQLite" do
+      context "when adapter is SQLite", focus: true do
         before { allow(user_exporter.ar_client).to receive(:adapter_name).and_return('SQLite') }
         it "executes query without other arguments" do
           expect(user_exporter.ar_client).to receive(:exec_query).with(sql)
@@ -202,16 +209,6 @@ describe RailsRedshiftReplicator::Exporters::Base do
       end
     end
 
-    describe "#row_count_threshold" do
-      before { user_exporter.replication = build :redshift_replication, slices: 3 }
-      it "returns number of lines to split export files" do
-        expect(user_exporter.row_count_threshold(200)).to eq 67
-      end
-    end
-
-    describe "#write_csv" do
-    end
-
     describe "#export" do
       before { allow(user_exporter).to receive(:fields_to_sync).and_return(%w(id login age)) }
       context "when there are incomplete replications" do
@@ -258,44 +255,6 @@ describe RailsRedshiftReplicator::Exporters::Base do
       end
     end
 
-    describe "#split_file" do
-      before do
-        allow(user_exporter).to receive(:local_file).and_return "/tmp/test"
-      end
-
-      it "splits file in 4 parts" do
-        f = File.open("/tmp/test", "w")
-        100.times{ f.puts "nothing here" }
-        f.close
-        user_exporter.split_file("test", 4)
-        %w(aa ab ac ad).each do |suffix|
-          File.exists?("/tmp/test.#{suffix}").should be true
-        end
-      end
-    end
-
-    describe "#file_key_in_format" do
-      context "with csv format" do
-        let(:file) { user_exporter.file_key_in_format("file.csv", "csv") }
-        it "returns file handler on s3" do
-          expect(file).to eq "rrr/users/file.csv"
-        end
-      end
-      context "with gzip format" do
-        let(:file) { user_exporter.file_key_in_format("file.csv", "gzip") }
-        it "returns file handler on s3" do
-          expect(file).to eq "rrr/users/file.gz"
-        end
-      end
-
-    end
-
-    describe "#gzipped" do
-      it "returns gz file extension" do
-        expect(user_exporter.gzipped("file.csv")).to eq "file.gz"
-      end
-    end
-
     describe "#last_replication" do
       let!(:replication1) { create :redshift_replication, source_table: "users" }
       let!(:replication2) { create :redshift_replication, source_table: "users" }
@@ -332,50 +291,6 @@ describe RailsRedshiftReplicator::Exporters::Base do
           end
         end
 
-      end
-    end
-
-    describe "#upload" do
-      context "with csv format" do
-        let(:files) { %w(file1 file2) }
-        before { user_exporter.replication = create(:redshift_replication, source_table: "users", export_format: "csv") }
-        before { user_exporter.file_names = files }
-        context 'when exporter is in an error state' do
-          before { user_exporter.errors = "some error"}
-          it 'returns nil' do
-            expect(user_exporter.upload).to be_nil 
-          end
-        end
-        context 'when exporter is valid' do
-          it "calls csv uploader" do
-            expect(user_exporter).to receive(:upload_csv).with(files)
-            user_exporter.upload
-          end
-          it "changes replication state to uploaded" do
-            expect(user_exporter).to receive(:upload_csv).with(files)
-            user_exporter.upload
-            expect(user_exporter.replication.state).to eq "uploaded"
-          end
-        end
-      end
-    end
-
-    describe "#upload_csv" do
-      let(:file_names) { ["file", "file.aa", "file.ab"] }
-      let!(:files) { file_names.map{ |f| File.open("/tmp/#{f}", "w") } }
-      before { user_exporter.replication = build(:redshift_replication, key: "file") }
-      it "uploads the splitted files" do
-        user_exporter.upload_csv(files.map(&:path))
-        expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket.files.get("rrr/users/file")).not_to be_present
-        expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket.files.get("rrr/users/file.aa")).to be_present
-        expect(RailsRedshiftReplicator::Exporters::Base.replication_bucket.files.get("rrr/users/file.ab")).to be_present
-      end
-
-      it "deletes local files afterwards" do
-        user_exporter.upload_csv(files.map(&:path))
-        file_names.each do |file|
-          expect(File.exists?("/tmp/#{file}")).to be false
-        end
       end
     end
 

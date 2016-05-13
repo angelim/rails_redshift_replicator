@@ -6,6 +6,7 @@ require 'rails_redshift_replicator/model/hair_trigger_extension'
 require 'rails_redshift_replicator/replicable'
 require 'rails_redshift_replicator/deleter'
 require 'rails_redshift_replicator/rlogger'
+require 'rails_redshift_replicator/file_manager'
 
 require 'rails_redshift_replicator/exporters/base'
 require 'rails_redshift_replicator/exporters/identity_replicator'
