@@ -23,7 +23,7 @@ describe 'Integration Tests' do
         let(:bucket)          { RailsRedshiftReplicator.s3_bucket_params[:bucket]}
         let(:s3_bucket)       { Aws::S3::Bucket.new(name: bucket, client: file_manager.s3_client) }
         let(:last_replication){ RailsRedshiftReplicator::Replication.last }
-        it 'replicates 5 users' do
+        it 'replicates 5 users', focus: true do
           RailsRedshiftReplicator.replicate :users
           expect(redshift_counts('users')).to eq 5
         end

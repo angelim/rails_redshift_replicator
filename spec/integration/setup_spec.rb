@@ -65,9 +65,6 @@ describe 'Setup Tests', :broken do
         expect(RailsRedshiftReplicator.history_cap).to be_nil
       end
 
-      it 'uses default max_copy_errors' do
-        expect(RailsRedshiftReplicator.max_copy_errors).to eq 0
-      end
     end
     context 'when changing configuration' do
       after(:all) { Dotenv.load File.expand_path("../spec/dummy/.env", __FILE__); RailsRedshiftReplicator.reload }
@@ -95,7 +92,6 @@ describe 'Setup Tests', :broken do
           config.local_replication_path = '/local-tmp'
           config.debug_mode = true
           config.history_cap = 3
-          config.max_copy_errors = 10
           config.logger = Mylogger.new(STDOUT)
         end
       end
@@ -143,10 +139,6 @@ describe 'Setup Tests', :broken do
 
       it 'defines history_cap' do
         expect(RailsRedshiftReplicator.history_cap).to eq 3
-      end
-
-      it 'defines max_copy_errors' do
-        expect(RailsRedshiftReplicator.max_copy_errors).to eq 10
       end
 
       it "changes module's configuration parameters" do

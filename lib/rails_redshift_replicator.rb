@@ -24,9 +24,9 @@ require 'rails_redshift_replicator/tools/vacuum'
 
 module RailsRedshiftReplicator
   mattr_accessor :replicables, :logger, :redshift_connection_params, :aws_credentials, :s3_bucket_params,
-                 :redshift_slices, :local_replication_path, :debug_mode, :history_cap, :max_copy_errors,
+                 :redshift_slices, :local_replication_path, :debug_mode, :history_cap,
                  :split_command, :gzip_command, :preferred_format, :max_retries, :enable_delete_tracking,
-                 :delete_s3_file_after_import
+                 :delete_s3_file_after_import, :copy_options
 
   class << self
 
@@ -59,6 +59,21 @@ module RailsRedshiftReplicator
         prefix: ENV['RRR_REPLICATION_PREFIX']
       }
 
+      # see [http://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html]
+      # You can add other keys aside from changing these.
+      # The keys won't be used on the copy commands. Just their values.
+      # To remove one of the defaults, set it to nil.
+      # @example:
+      #   @@copy_options = {
+      #     statupdate: nil,
+      #   }
+      @@copy_options = {
+        statupdate: 'STATUPDATE TRUE',
+        acceptinvchars: 'ACCEPTINVCHARS',
+        empty: 'EMPTYASNULL',
+        truncate: 'TRUNCATECOLUMNS'
+      }
+
       # Number of slices available on Redshift cluster. Used to split export files. Defaults to 1.
       # see [http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html]
       @@redshift_slices = 1
@@ -77,10 +92,6 @@ module RailsRedshiftReplicator
 
       # Defines how many replication records are kept in history. Default to nil keeping full history.
       @@history_cap = nil
-
-      # Defines how many errors are allowed to happen when importing into Redshfit
-      # see [http://docs.aws.amazon.com/redshift/latest/dg/copy-parameters-data-load.html#copy-maxerror]
-      @@max_copy_errors = 0
 
       # Preferred format for export file
       @@preferred_format = 'csv'

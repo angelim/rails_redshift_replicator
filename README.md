@@ -150,6 +150,21 @@ RailsRedshiftReplicator.setup do |config|
     prefix: ENV['RRR_REPLICATION_PREFIX']
   }
 
+  # see [http://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html]
+  # You can add other keys aside from changing these.
+  # The keys won't be used on the copy commands. Just their values.
+  # To remove one of the defaults, set it to nil.
+  # @example:
+  #   config.copy_options = {
+  #     statupdate: nil,
+  #   }
+  config.copy_options = {
+    statupdate: 'STATUPDATE TRUE',
+    acceptinvchars: 'ACCEPTINVCHARS',
+    empty: 'EMPTYASNULL',
+    truncate: 'TRUNCATECOLUMNS'
+  }
+
   # Number of slices available on Redshift cluster. Used to split export files. Defaults to 1.
   # see [http://docs.aws.amazon.com/redshift/latest/dg/t_splitting-data-files.html]
   config.redshift_slices = 1
@@ -168,10 +183,6 @@ RailsRedshiftReplicator.setup do |config|
 
   # Defines how many replication records are kept in history. Default to nil keeping full history.
   config.history_cap = nil
-
-  # Defines how many errors are allowed to happen when importing into Redshfit
-  # see [http://docs.aws.amazon.com/redshift/latest/dg/copy-parameters-data-load.html#copy-maxerror]
-  config.max_copy_errors = 0
 
   # Preferred format for export file
   config.preferred_format = 'csv'

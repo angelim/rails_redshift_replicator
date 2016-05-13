@@ -47,10 +47,6 @@ RailsRedshiftReplicator.setup do |config|
   # Defines how many replication records are kept in history. Default to nil keeping full history.
   config.history_cap = nil
 
-  # Defines how many errors are allowed to happen when importing into Redshfit
-  # see [http://docs.aws.amazon.com/redshift/latest/dg/copy-parameters-data-load.html#copy-maxerror]
-  config.max_copy_errors = 0
-
   # Preferred format for export file
   config.preferred_format = 'csv'
 

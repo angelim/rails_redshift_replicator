@@ -49,14 +49,19 @@ module RailsRedshiftReplicator
       # @param (see #copy)
       # @return [String] sql statement to run
       def copy_statement(table_name, options = {})
-        format_options = replication.csv? ? "CSV" : "GZIP delimiter ',' escape removequotes"
+        format_options = replication.csv? ? "CSV" : "GZIP DELIMITER ',' ESCAPE REMOVEQUOTES"
         sql = <<-CS
           COPY #{table_name} from '#{import_file}' #{"NOLOAD" if options[:noload]}
           REGION '#{RailsRedshiftReplicator.s3_bucket_params[:region]}'
-          credentials 'aws_access_key_id=#{RailsRedshiftReplicator.aws_credentials[:key]};aws_secret_access_key=#{RailsRedshiftReplicator.aws_credentials[:secret]}'
-          maxerror #{RailsRedshiftReplicator.max_copy_errors} acceptinvchars STATUPDATE true #{format_options}
+          CREDENTIALS 'aws_access_key_id=#{RailsRedshiftReplicator.aws_credentials[:key]};aws_secret_access_key=#{RailsRedshiftReplicator.aws_credentials[:secret]}'
+          #{format_options}
+          #{copy_options}
         CS
         sql.squish
+      end
+
+      def copy_options
+        RailsRedshiftReplicator.copy_options.values.join(" ")
       end
 
       # @return [String] location of import files on s3
